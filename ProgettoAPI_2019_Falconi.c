@@ -698,6 +698,61 @@ void Debug_Delete_All_Entities (rb_tree *T_ent, rb_node *root) {
     Debug_Delete_All_Entities(T_ent, next_right);
 }
 
+void Delete_One_Ent_From_Ent_List(rel_list *rel_list_element, char *to_be_deleted_name) {
+    ent_list *temp = rel_list_element->ent_list;
+    //Se in testa
+    if (temp != NULL && strcmp(temp->ent_node->key, to_be_deleted_name) == 0) {
+        rel_list_element->ent_list = temp->next;
+        rel_list_element->number_of_entities--;
+        free(temp);
+    } else {
+        ent_list *prev;
+        while (temp != NULL && strcmp(temp->ent_node->key, to_be_deleted_name) != 0) {
+            prev = temp;
+            temp = temp->next;
+        }
+        if (temp != NULL) {
+            prev->next = temp->next;
+            rel_list_element->number_of_entities--;
+            free(temp);
+        }
+    }
+}
+void Delete_Ent_List_In_Specific_Rel (rb_node *ent2_node, char *rel_element, char *ent1, rb_node_rel *rel_node, rb_tree_rel *T) {
+    rel_list *temp = ent2_node->relations;
+    rel_list *prev = NULL;
+    //Se sono in testa a REL
+    if (temp != NULL && strcmp(temp->rel_name, rel_element) == 0) {
+        Delete_One_Ent_From_Ent_List(temp, ent1);
+        if (temp->number_of_entities == 0) {
+            ent2_node->relations = temp->next;
+            rel_node->num_of_receivers--;
+            free(temp->rel_name);
+            free(temp);
+        }
+    } else {
+        while (temp != NULL && strcmp(temp->rel_name, rel_element) != 0) {
+            prev = temp;
+            temp = temp->next;
+        }
+        if (temp != NULL) {
+            Delete_One_Ent_From_Ent_List(temp, ent1);
+            if (temp->number_of_entities == 0) {
+                prev->next = temp->next;
+                rel_node->num_of_receivers--;
+                free(temp->rel_name);
+                free(temp);
+            }
+        }
+    }
+    //Fino a qua va, 0 leaks
+    if (rel_node->num_of_receivers == 0) {
+        Delete_Rel(T, rel_node);
+        free(rel_node->key);
+        free(rel_node);
+    }
+}
+
 //Funziona.
 void Delete_Ent_List(rel_list *rel_list_element, char *to_be_deleted_name){
     rel_list *cycle_rel = rel_list_element;
@@ -980,25 +1035,28 @@ int main () {
                         if (ent2_node != NULL) {
                             rb_node_rel *rel_node = Find_Rel(T_rel, rel, T_rel->root);
                             if (rel_node != NULL) {
+                                Delete_Ent_List_In_Specific_Rel(ent2_node, rel, ent1, rel_node, T_rel);
                                 /*
-                                 * TODO -> Devo vedere se è presente in relazioni tra tutti i nodi delle entità. fatto
-                                 * TODO -> Se è presente, elimino tutte le entità e poi elimino la relazione. fatto
-                                 * TODO -> Poi devo rimuovere il node_rel dall'albero. fatto
-                                 */
+                                 * sbagliato! Devo cancellare solo l'ent1 dalla relazione con l'ent2!!!
                                 Inorder_Delete_Rel_Elements(T_ent, T_ent->root, rel);
                                 Delete_Rel(T_rel, rel_node);
-                                free(rel_node->key);
+                                 free(rel_node->key);
                                 free(rel_node);
+                                 */
+
                             }
                         }
                 }
-                /*
-                 * rb_node_rel * to_be_deleted = Find_Rel(T_rel, rel, T_rel->root);
-                if (to_be_deleted != NULL) {
-                    Delete_Rel( T_rel, to_be_deleted);
-                    free(to_be_deleted);
-                }*/
             }
+        } else if (strcmp(comand, "report") == 0) {
+            if (T_rel->root == T_rel->nil) {
+                printf("none\n");
+            } else {
+                /*
+                 * TODO -> Scorrere tutta T_rel e capire come stampare
+                 */
+            }
+
         } else if(strcmp(comand, "debug") == 0) {
             printf("\nentities:\n");
             Inorder( T_ent -> root, T_ent);

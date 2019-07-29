@@ -28,6 +28,65 @@ typedef struct rb_tree_s {
     rb_node *root, *nil;
 }rb_tree;
 
+//Report Structure
+typedef struct report_node_s {
+    char *name;
+    struct report_node_s *next;
+}report_node;
+typedef struct report_tree_s {
+    int quantity;
+    report_node *head;
+}report_tree;
+
+report_tree* Create_Report_Tree() {
+    report_tree *report = (report_tree *)malloc(sizeof(report_tree));
+    report->quantity = 0;
+    report->head = NULL;
+    return report;
+}
+
+report_node* Create_Report_Node (char *name) {
+    char *temp_name;
+    int i;
+    int len = 0;
+    for (len = 0; name[len] != '\0'; len++);
+    temp_name = (char*)malloc((len+1) *sizeof(char));
+    for (i = 0; i < len; i++) {
+        temp_name[i] = name[i];
+    }
+    temp_name[len] = '\0';
+    report_node *report_ele = (report_node *)malloc(sizeof(report_node));
+    report_ele->name = temp_name;
+    report_ele->next = NULL;
+    return report_ele;
+}
+
+void Insert_Report_Element(report_tree *T, report_node *node, int num) {
+    report_node *temp = T->head;
+    if (temp == NULL) {
+        T->head = node;
+    } else {
+        while (temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = node;
+    }
+    T->quantity = num;
+}
+
+void Clean_Report_List (report_tree *T) {
+    report_node *temp = T->head;
+    while (temp != NULL) {
+        T->head = temp->next;
+        free(temp->name);
+        free(temp);
+        temp = T->head;
+    }
+}
+
+void Clean_Report_Tree (report_tree *T) {
+    free(T);
+}
 void Left_Rotate (rb_tree * T, rb_node * x){
     rb_node * y = x -> right;
     x -> right = y -> left;
@@ -753,7 +812,6 @@ void Delete_Ent_List_In_Specific_Rel (rb_node *ent2_node, char *rel_element, cha
     }
 }
 
-//Funziona.
 void Delete_Ent_List(rel_list *rel_list_element, char *to_be_deleted_name){
     rel_list *cycle_rel = rel_list_element;
     while (cycle_rel != NULL) {
@@ -775,7 +833,6 @@ void Delete_Ent_List(rel_list *rel_list_element, char *to_be_deleted_name){
                 free(temp);
             }
         }
-
         cycle_rel = cycle_rel->next;
     }
 }
@@ -885,6 +942,66 @@ void Delete_Rel_Node (rb_tree_rel *T, rb_node_rel *root ) {
      Delete_Rel_Node(T, root->right);
 }
 
+void Inorder_Report_Elements (rb_tree *T, rb_node *root, report_tree *T_report, int max, char *rel_name) {
+    if (root == T->nil) {
+        return;
+    }
+    Inorder_Report_Elements(T, root->left, T_report, max, rel_name);
+
+    //
+    rel_list *temp = root->relations;
+    while (temp != NULL && strcmp(temp->rel_name, rel_name) != 0) {
+        temp = temp->next;
+    }
+    //TODO -> Il report ha dei problemi con la cancellazione della struttura.
+    //TODO -> Ho delle relazioni che hanno # = 0 . potrebbe essere un errore di delrel o delent
+    if (temp != NULL) {
+        if (temp->number_of_entities < T_report->quantity) {
+            //do nothing
+        } else if (temp->number_of_entities == T_report->quantity) {
+            Insert_Report_Element(T_report, Create_Report_Node(root->key), temp->number_of_entities);
+        } else {
+            Clean_Report_List(T_report);
+            Insert_Report_Element(T_report, Create_Report_Node(root->key), temp->number_of_entities);
+        }
+    }
+
+    Inorder_Report_Elements(T, root->right, T_report, max, rel_name);
+}
+
+void Print_Report (report_tree *T, char *rel_name) {
+    //TODO -> Sostituire printf con fputs
+    if (T->quantity != 0) {
+        printf("\"%s\" ", rel_name);
+        report_node *temp = T->head;
+        while (temp != NULL) {
+            printf("\"%s\" ", temp->name);
+            temp = temp->next;
+        }
+        printf("%d;", T->quantity);
+        if (temp->next != NULL);
+        printf (" ");
+        //fputs( , stdout);
+    }
+}
+
+void Inorder_Report_Tree (rb_tree_rel *T, rb_node_rel *root, rb_tree *T_ent) {
+    if (root == T->nil) {
+        return;
+    }
+    Inorder_Report_Tree(T, root->left, T_ent);
+
+    report_tree *reportTree = Create_Report_Tree();
+    Inorder_Report_Elements(T_ent, T_ent->root, reportTree, root->num_of_receivers, root->key);
+    //Stampa del report
+    Print_Report(reportTree, root->key);
+    //Pulizia dell'albero
+    Clean_Report_List(reportTree);
+    Clean_Report_Tree(reportTree);
+
+    Inorder_Report_Tree(T, root->right, T_ent);
+}
+
 void parseWord (char *word) {
     int len, i;
     len = strlen(word);
@@ -910,47 +1027,25 @@ int main () {
 
     //External Loop: cicla fino alla fine dell'esecuzione del programma; ovvero fino a che viene letto END.
     while (ext_loop == 1) {
-        loop = 1;
-        //printf("Scrivi comando");
         comand = (char *)calloc(8, sizeof(char));
-        //DEPRECATED
-        //Leggo il comnado.
-        /*while (loop) {
-            temp = getchar();
-            if (temp == EOF) {
-            	return 0;
-            	}
-            if (temp != '\n') {
-                if (temp == ' ') {
-                    comand[i] = '\0';
-                    loop = 0;
-                    break;
-                }
-                else {
-                    comand[i] = temp;
-                }
-            }
-            i++;
-        }*/
-        scanf("%s", comand);
-
+        isRead = scanf("%s", comand);
         //Confronto il comando con i casi noti.
-        if (strcmp(comand, "end") == 0) {
+        if (strcmp(comand, "end") == 0) {/*
             Debug_Delete_All_Relations(T_rel, T_rel->root);
             Debug_Delete_All_Entities(T_ent, T_ent->root);
             free(comand);
             free(T_rel->nil);
             free(T_rel);
             free(T_ent->nil);
-            free(T_ent);
+            free(T_ent);*/
             return 0;
         }
             //Se ADDENT o DELENT, devo leggere l'entità.
         else if (strcmp (comand, "addent") == 0 || (strcmp (comand, "delent") == 0)) {
-            scanf(" \"%s", ent1);
+            isRead = scanf(" \"%s", ent1);
             parseWord(ent1);
             if (comand[0] == 'a') {
-                if (1) {
+                if (isRead) {
                     Insert(T_ent, Create_Node(ent1));
                 }
             } else {
@@ -984,13 +1079,12 @@ int main () {
                 }
             }
         }else if (strcmp (comand, "addrel") == 0 || (strcmp (comand, "delrel") == 0)) {
-            //SOLO PER TEST
-            scanf(" \"%s \"%s \"%s", ent1, ent2, rel);
+            isRead = scanf(" \"%s \"%s \"%s", ent1, ent2, rel);
             parseWord(ent1);
             parseWord(ent2);
             parseWord(rel);
             if (comand[0] == 'a') {
-                if (1) {
+                if (isRead) {
                     //Se esiste l'entità1
                     rb_node *ent1_node = Find(T_ent, ent1, T_ent->root);
                     if (ent1_node != NULL) {
@@ -1036,14 +1130,6 @@ int main () {
                             rb_node_rel *rel_node = Find_Rel(T_rel, rel, T_rel->root);
                             if (rel_node != NULL) {
                                 Delete_Ent_List_In_Specific_Rel(ent2_node, rel, ent1, rel_node, T_rel);
-                                /*
-                                 * sbagliato! Devo cancellare solo l'ent1 dalla relazione con l'ent2!!!
-                                Inorder_Delete_Rel_Elements(T_ent, T_ent->root, rel);
-                                Delete_Rel(T_rel, rel_node);
-                                 free(rel_node->key);
-                                free(rel_node);
-                                 */
-
                             }
                         }
                 }
@@ -1053,8 +1139,16 @@ int main () {
                 printf("none\n");
             } else {
                 /*
-                 * TODO -> Scorrere tutta T_rel e capire come stampare
+                 * TODO -> Scorro albero relazioni. E creo una ministruttura tipo albero con # e puntatore a
+                 * TODO    elemento, che sarà del tipo char *, e next
+                 * TODO -> Per ogni elemento , se ha la relazione d'interesse, una variabile
+                 * TODO    inizialmente posta = a rel.# diminuisce di uno, se l'elemento ha #diEnt < di quello della relazione
+                 * TODO    non faccio niente, se ha = lo aggiungo in coda, se ha > pulisco la lista e ne creo una nuova.
+                 * TODO -> Ripeto il tutto per tutte le relazioni presenti.
+                 * TODO -> Uso fputs per la stampa dei caratteri e printf per i numeri
                  */
+                Inorder_Report_Tree(T_rel, T_rel->root, T_ent);
+                printf("\n");
             }
 
         } else if(strcmp(comand, "debug") == 0) {
@@ -1062,10 +1156,8 @@ int main () {
             Inorder( T_ent -> root, T_ent);
             printf("\nrelationships\n");
             Inorder_Rel(T_rel -> root, T_rel);
-            //printRelationshipTree(relationships);
             printf("\n");
         }
         free(comand);
     }
-
 }

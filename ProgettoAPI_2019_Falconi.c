@@ -643,141 +643,6 @@ void Add_Rel_List_In_Ent_Node (rb_node *node, rel_list *list) {
     list->next = temp;
 }
 
-//deprecata
-/*void Remove_Ent_From_Ent_List (rb_node *root, char *key, rb_tree *T) {
-    if (root == T->nil) {
-        return;
-    }
-    Remove_Ent_From_Ent_List(root->left, key, T);
-    if (root ->relations != NULL) {
-        rel_list *prev_rel, *head, *temp = root ->relations;
-        head = root->relations;
-        prev_rel = root->relations;
-        //Per ogni relazione presente nel nodo entità
-        while (temp != NULL) {
-            int deleted = 0;
-            //Se è la testa della lista
-            ent_list *temp_ent= temp->ent_list;
-            if (strcmp(temp->ent_list->ent_node->key, key) == 0) {
-                temp->ent_list = temp->ent_list->next;
-                free(temp_ent);
-                temp->number_of_entities--;
-            }
-            //Temp_Ent diventa il next;
-            else {
-                temp_ent = temp->ent_list->next;
-                ent_list *prev = temp->ent_list;
-                while (!deleted && temp_ent != NULL && prev != NULL) {
-                    if (strcmp(temp_ent->ent_node->key, key) == 0) {
-                        prev->next = temp_ent->next;
-                        free(temp_ent);
-                        temp->number_of_entities--;
-                        deleted = 1;
-                    }
-                    if (!deleted) {
-                        prev = temp_ent;
-                        temp_ent = temp_ent->next;
-                    }
-                }
-            }
-            if (temp->number_of_entities == 0) {
-                rel_list *current = temp;
-                rel_list *next = temp->next;
-                //Se è la testa
-                if (strcmp(head->rel_name, current->rel_name) == 0) {
-                    head = head->next;
-                    free(current->rel_name);
-                    free(current);
-                } else {
-                    for ( current = head; current != NULL && strcmp(current->next->rel_name,temp->rel_name) == 0; current = current->next);
-                    prev_rel = current;
-                    prev_rel->next = prev_rel->next->next;
-                    temp = temp->next;
-                    free(current->rel_name);
-                    free(current);
-                }
-            }
-        }
-    }
-    Remove_Ent_From_Ent_List(root->right, key, T);
-}*/
-
-void Find_Ent_In_Rel_List(rb_node *rb_root, char *ent_name, rb_tree_rel *T) {
-    rel_list *head_rel = rb_root->relations;
-    rel_list *temp_rel = head_rel;
-    rel_list *prev_rel = NULL;
-    while (temp_rel != NULL) {
-        ent_list *temp_ent = temp_rel->ent_list, *prev_ent;
-        //Se l'entità da eliminare è presente.
-        //Se sono in testa
-        if (temp_ent != NULL && strcmp(temp_ent->ent_node->key, ent_name) == 0) {
-            temp_rel->ent_list = temp_ent->next;
-            temp_rel->number_of_entities--;
-            free(temp_ent);
-        } else {
-            while (temp_ent != NULL && strcmp(temp_ent->ent_node->key, ent_name) != 0) {
-                prev_ent = temp_ent;
-                temp_ent = temp_ent->next;
-            }
-            if (temp_ent != NULL) {
-                prev_ent->next = temp_ent->next;
-                temp_rel->number_of_entities--;
-                free(temp_ent);
-            }
-        }
-
-        // Fino a qua funziona
-
-        //Se la lista della relazione risulta vuota
-        if (temp_rel->number_of_entities == 0) {
-            char *rel_name = temp_rel->rel_name;
-            rel_list *to_delete;
-            rb_node_rel *check_to_delete = NULL;
-            //Se è in testa
-            if (strcmp(rel_name, head_rel->rel_name) == 0 ) {
-                rb_root->relations = rb_root->relations->next;
-                check_to_delete = Find_Rel(T, temp_rel->rel_name, T->root);
-                check_to_delete->num_of_receivers--;
-                to_delete = temp_rel;
-                temp_rel = temp_rel->next;
-                free(to_delete->rel_name);
-                free(to_delete);
-            } else {
-                while (temp_rel != NULL && strcmp(temp_rel->rel_name, rel_name) != 0) {
-                    prev_rel = temp_rel;
-                    temp_rel = temp_rel->next;
-                }
-                if (prev_rel != NULL && temp_rel != NULL) {
-                    prev_rel->next = temp_rel->next;
-                    check_to_delete = Find_Rel(T, temp_rel->rel_name, T->root);
-                    check_to_delete->num_of_receivers--;
-                    to_delete = temp_rel;
-                    temp_rel = temp_rel->next;
-                    free(to_delete->rel_name);
-                    free(to_delete);
-                }
-            }
-            if (check_to_delete!= NULL && check_to_delete->num_of_receivers == 0) {
-                Delete_Rel(T, check_to_delete);
-            }
-        } else {
-            prev_rel = temp_rel;
-            temp_rel = temp_rel->next;
-        }
-    }
-}
-void Inorder_Delete_Ent(rb_tree *T, rb_node *root,char *key, rb_tree_rel *T_rel) {
-    if (root == T->nil) {
-        return;
-    }
-    Inorder_Delete_Ent(T, root->left, key, T_rel);
-    //Se il nodo ha delle relazioni
-    if (root->relations != NULL) {
-        Find_Ent_In_Rel_List(root, key, T_rel);
-    }
-    Inorder_Delete_Ent(T, root->right, key, T_rel);
-}
-
 rel_list * Find_Rel_In_Ent (rb_node *ent, char *name_rel) {
     rel_list *temp = ent->relations;
     while (1) {
@@ -833,6 +698,138 @@ void Debug_Delete_All_Entities (rb_tree *T_ent, rb_node *root) {
     Debug_Delete_All_Entities(T_ent, next_right);
 }
 
+//Funziona.
+void Delete_Ent_List(rel_list *rel_list_element, char *to_be_deleted_name){
+    rel_list *cycle_rel = rel_list_element;
+    while (cycle_rel != NULL) {
+        ent_list *temp, *prev;
+        temp = rel_list_element->ent_list;
+        //Se in testa
+        if (temp != NULL && strcmp(temp->ent_node->key, to_be_deleted_name) == 0) {
+            rel_list_element->ent_list = temp->next;
+            rel_list_element->number_of_entities--;
+            free(temp);
+        } else {
+            while (temp != NULL && strcmp(temp->ent_node->key, to_be_deleted_name) != 0) {
+                prev = temp;
+                temp = temp->next;
+            }
+            if (temp != NULL) {
+                prev->next = temp->next;
+                cycle_rel->number_of_entities--;
+                free(temp);
+            }
+        }
+
+        cycle_rel = cycle_rel->next;
+    }
+}
+
+void Delete_Empty_Rel_List (rb_node *root, rb_tree_rel *T) {
+    if (root->relations == NULL) {
+        return;
+    }
+    rel_list *temp = root->relations;
+    rel_list *prev;
+    if (temp != NULL && temp->number_of_entities == 0) {
+        root->relations = temp->next;
+        rb_node_rel *temp_node_rel = Find_Rel(T, temp->rel_name, T->root);
+        temp_node_rel->num_of_receivers--;
+        free(temp->rel_name);
+        free(temp);
+    } else {
+        while (temp != NULL && temp->number_of_entities != 0) {
+            prev = temp;
+            temp = temp->next;
+        }
+        if (temp != NULL) {
+            prev->next = temp->next;
+            rb_node_rel *temp_node_rel = Find_Rel(T, temp->rel_name, T->root);
+            temp_node_rel->num_of_receivers--;
+            free(temp->rel_name);
+            free(temp);
+        }
+    }
+}
+
+void Inorder_Delete_Ent_Elements (rb_tree *T, rb_node *root, char *ent_name, rb_tree_rel *T_rel) {
+    if (root == T->nil) {
+        return;
+    }
+    Inorder_Delete_Ent_Elements(T, root->left, ent_name, T_rel);
+
+    //Funziona, NO LEAKS
+    Delete_Ent_List(root->relations, ent_name);
+    //Funziona, NO LEAKS
+    Delete_Empty_Rel_List(root, T_rel);
+
+    Inorder_Delete_Ent_Elements(T, root->right, ent_name, T_rel);
+}
+
+void Delete_Rel_List (rb_node *node, char *rel_name) {
+    if (node->relations == NULL) {
+        return;
+    }
+    rel_list *temp = node->relations;
+    rel_list *prev;
+    int i;
+    if (temp != NULL && strcmp(temp->rel_name, rel_name) == 0) {
+        node->relations = temp->next;
+        ent_list *temp_ent = temp->ent_list;
+        for (i = temp->number_of_entities; i != 0; i--) {
+            if (temp_ent != NULL) {
+                temp->ent_list = temp_ent->next;
+                free(temp_ent);
+                temp_ent = temp->ent_list;
+            }
+        }
+        free(temp->rel_name);
+        free(temp);
+    } else {
+        while (temp != NULL && strcmp(temp->rel_name, rel_name) != 0) {
+            prev = temp;
+            temp = temp->next;
+        }
+        if (temp != NULL) {
+            prev->next = temp->next;
+            ent_list *temp_ent = temp->ent_list;
+            for (i = temp->number_of_entities; i != 0; i++) {
+                if (temp_ent != NULL) {
+                    temp->ent_list = temp_ent->next;
+                    free(temp_ent);
+                    temp_ent = temp->ent_list;
+                }
+            }
+            free(temp->rel_name);
+            free(temp);
+        }
+    }
+}
+
+void Inorder_Delete_Rel_Elements (rb_tree *T, rb_node *root, char *rel_name) {
+    if (root == T->nil) {
+        return;
+    }
+    Inorder_Delete_Rel_Elements(T, root->left, rel_name);
+
+    Delete_Rel_List(root, rel_name);
+
+    Inorder_Delete_Rel_Elements(T, root->right, rel_name);
+}
+
+void Delete_Rel_Node (rb_tree_rel *T, rb_node_rel *root ) {
+    if (root == T->nil) {
+        return;
+    }
+    Delete_Rel_Node(T, root->left);
+     if (root->num_of_receivers == 0) {
+         Delete_Rel(T, root);
+         free(root->key);
+         free(root);
+     }
+     Delete_Rel_Node(T, root->right);
+}
+
 void parseWord (char *word) {
     int len, i;
     len = strlen(word);
@@ -882,18 +879,13 @@ int main () {
         }*/
         scanf("%s", comand);
 
-        //printf("%s\n", comand);
-
-
         //Confronto il comando con i casi noti.
         if (strcmp(comand, "end") == 0) {
             Debug_Delete_All_Relations(T_rel, T_rel->root);
             Debug_Delete_All_Entities(T_ent, T_ent->root);
             free(comand);
-            //free(T_rel->nil->key);
             free(T_rel->nil);
             free(T_rel);
-            //free(T_ent->nil->key);
             free(T_ent->nil);
             free(T_ent);
             return 0;
@@ -907,39 +899,32 @@ int main () {
                     Insert(T_ent, Create_Node(ent1));
                 }
             } else {
-                /*
-                 * TODO -> Bisogna assicurarsi che, se cancello un entità, sto rimuovendo tale entià da ogni altra entità che
-                 * TODO    potrebbe subire una relazione da suddetta entità.
-                 * TODO    Controllare memory leaks nelle liste relazioni e entità (fatto)
-                 */
                 rb_node *to_be_deleted = Find(T_ent, ent1, T_ent->root);
+                //If ent1 is being monitored
                 if (to_be_deleted != NULL) {
-                    Inorder_Delete_Ent(T_ent, T_ent->root, ent1, T_rel);
-                    //Remove_Ent_From_Ent_List(T_ent->root, ent1, T_ent); deprecated
+                    Inorder_Delete_Ent_Elements (T_ent, T_ent->root, to_be_deleted->key, T_rel);
+                    Delete_Rel_Node(T_rel, T_rel->root);
                     if (to_be_deleted->relations != NULL) {
-                        rel_list *check_if_to_be_deleted = to_be_deleted->relations;
-                        //Per ogni relazione della ent che voglio rimuovere, se è l'unica ad usarla, rimuovo la relazione dall'albero
-                        // altrimenti, diminuisco il contatore.
-                        while (check_if_to_be_deleted != NULL) {
-                            rel_list *temp_rel_list = check_if_to_be_deleted;
-                            while (check_if_to_be_deleted->ent_list != NULL) {
-                                ent_list *temp_ent_list = check_if_to_be_deleted->ent_list;
-                                check_if_to_be_deleted->ent_list = check_if_to_be_deleted->ent_list->next;
-                                free(temp_ent_list);
+                        rel_list *current = to_be_deleted->relations; //Head
+                        rel_list *next;
+                        while (current != NULL) {
+                            next = current->next;
+                            if (current->ent_list != NULL) {
+                                ent_list *current_ent = current->ent_list; //Head
+                                ent_list *next_ent;
+                                while (current_ent != NULL) {
+                                    next_ent = current_ent->next;
+                                    free(current_ent);
+                                    current_ent = next_ent;
+                                }
                             }
-                            rb_node_rel *check_rel = Find_Rel(T_rel, check_if_to_be_deleted->rel_name, T_rel->root);
-                            if (check_rel->num_of_receivers == 1) {
-                                Delete_Rel(T_rel, check_rel);
-                                free(check_rel->key);
-                                free(check_rel);
-                            } else {
-                                check_rel->num_of_receivers--;
-                            }
-                            check_if_to_be_deleted = check_if_to_be_deleted->next;
-                            free(temp_rel_list);
+                            free(current->rel_name);
+                            free(current);
+                            current = next;
                         }
                     }
                     Delete(T_ent, to_be_deleted);
+                    free (to_be_deleted->key);
                     free(to_be_deleted);
                 }
             }
@@ -989,6 +974,24 @@ int main () {
                     }
                 }
             } else {
+                rb_node *ent1_node = Find(T_ent, ent1, T_ent->root);
+                if (ent1_node != NULL) {
+                    rb_node *ent2_node = Find(T_ent, ent2, T_ent->root);
+                        if (ent2_node != NULL) {
+                            rb_node_rel *rel_node = Find_Rel(T_rel, rel, T_rel->root);
+                            if (rel_node != NULL) {
+                                /*
+                                 * TODO -> Devo vedere se è presente in relazioni tra tutti i nodi delle entità. fatto
+                                 * TODO -> Se è presente, elimino tutte le entità e poi elimino la relazione. fatto
+                                 * TODO -> Poi devo rimuovere il node_rel dall'albero. fatto
+                                 */
+                                Inorder_Delete_Rel_Elements(T_ent, T_ent->root, rel);
+                                Delete_Rel(T_rel, rel_node);
+                                free(rel_node->key);
+                                free(rel_node);
+                            }
+                        }
+                }
                 /*
                  * rb_node_rel * to_be_deleted = Find_Rel(T_rel, rel, T_rel->root);
                 if (to_be_deleted != NULL) {

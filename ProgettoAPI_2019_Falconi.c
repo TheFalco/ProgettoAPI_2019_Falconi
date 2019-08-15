@@ -1,94 +1,53 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#define MAX_LEN 34
+#define Hash_Size 5471
 #define RED 'r'
 #define BLACK 'b'
 
-typedef struct rel_list_s {
-    char * rel_name;
-    int number_of_entities;
-    struct ent_list_s *ent_list;
-    struct rel_list_s *next;
-}rel_list;
-
-typedef struct rb_node_s {
-    char *key;
+typedef struct RB_Tree_Ent_s {
+    char *ent_name;
+    struct RB_Tree_Ent_s *parent, *left, *right;
     char color;
-    struct rb_node_s *left, *right, *parent;
-    rel_list *relations;
-} rb_node;
+}RB_Tree_Ent;
 
-typedef  struct ent_list_s {
-    rb_node *ent_node;
-    struct ent_list_s *next;
-}ent_list;
+typedef struct RB_Tree_Ent_Head_s {
+    RB_Tree_Ent *root, *nil;
+}RB_Tree_Ent_Head;
 
-typedef struct rb_tree_s {
-    rb_node *root, *nil;
-}rb_tree;
+typedef struct RB_Tree_Ent_Rel_s {
+    char *ent_name;
+    struct RB_Tree_Ent_Rel_s *parent, *left, *right;
+    char color;
+    int num_of_givers;
+    RB_Tree_Ent_Head *T_givers;
+}RB_Tree_Ent_Rel;
 
-//Report Structure
-typedef struct report_node_s {
-    char *name;
-    struct report_node_s *next;
-}report_node;
-typedef struct report_tree_s {
-    int quantity;
-    report_node *head;
-}report_tree;
+typedef struct RB_Tree_Ent_Rel_Head_s {
+    RB_Tree_Ent_Rel *root, *nil;
+}RB_Tree_Ent_Rel_Head;
 
-report_tree* Create_Report_Tree() {
-    report_tree *report = (report_tree *)malloc(sizeof(report_tree));
-    report->quantity = 0;
-    report->head = NULL;
-    return report;
-}
+typedef struct RB_Node_s {
+    char *rel_name;
+    struct RB_Node_s *parent, *left, *right;
+    char color;
+    int num_of_entities, max_size, num_of_max_entities;
+    RB_Tree_Ent_Head *T_max_ent;
+    RB_Tree_Ent_Rel_Head *T_ent;
+}RB_Node;
 
-report_node* Create_Report_Node (char *name) {
-    char *temp_name;
-    int i;
-    int len = 0;
-    for (len = 0; name[len] != '\0'; len++);
-    temp_name = (char*)malloc((len+1) *sizeof(char));
-    for (i = 0; i < len; i++) {
-        temp_name[i] = name[i];
-    }
-    temp_name[len] = '\0';
-    report_node *report_ele = (report_node *)malloc(sizeof(report_node));
-    report_ele->name = temp_name;
-    report_ele->next = NULL;
-    return report_ele;
-}
+typedef struct RB_Tree_s {
+    RB_Node *root, *nil;
+}RB_Tree;
 
-void Insert_Report_Element(report_tree *T, report_node *node, int num) {
-    report_node *temp = T->head;
-    if (temp == NULL) {
-        T->head = node;
-    } else {
-        while (temp->next != NULL) {
-            temp = temp->next;
-        }
-        temp->next = node;
-    }
-    T->quantity = num;
-}
+typedef struct hash_element_s {
+    char *ent_name;
+    struct hash_element_s *next;
+}hash_element;
 
-void Clean_Report_List (report_tree *T) {
-    report_node *temp = T->head;
-    while (temp != NULL) {
-        T->head = temp->next;
-        free(temp->name);
-        free(temp);
-        temp = T->head;
-    }
-}
-
-void Clean_Report_Tree (report_tree *T) {
-    free(T);
-}
-void Left_Rotate (rb_tree * T, rb_node * x){
-    rb_node * y = x -> right;
+//Ent Tree Functions
+void Left_Rotate_Ent (RB_Tree_Ent_Head * T, RB_Tree_Ent * x){
+    RB_Tree_Ent * y = x -> right;
     x -> right = y -> left;
     if (y -> left != T -> nil) {
         y -> left -> parent = x;
@@ -105,8 +64,8 @@ void Left_Rotate (rb_tree * T, rb_node * x){
     x->parent = y;
 }
 
-void Right_Rotate (rb_tree * T, rb_node * y) {
-    rb_node * x = y -> left;
+void Right_Rotate_Ent (RB_Tree_Ent_Head * T, RB_Tree_Ent * y) {
+    RB_Tree_Ent * x = y -> left;
     y->left = x->right;
     if (x->right != T->nil) {
         x->right->parent = y;
@@ -123,16 +82,16 @@ void Right_Rotate (rb_tree * T, rb_node * y) {
     y->parent = x;
 }
 
-rb_node * Minimum(rb_tree *T, rb_node *n) {
+RB_Tree_Ent * Minimum_Ent (RB_Tree_Ent_Head *T, RB_Tree_Ent *n) {
     while (n->left != T->nil) {
         n = n->left;
     }
     return n;
 }
 
-void Insert_Fixup(rb_tree* T, rb_node *z) {
+void Insert_Fixup_Ent(RB_Tree_Ent_Head *T, RB_Tree_Ent *z) {
     while (z->parent->color == RED) {
-        rb_node * y;
+        RB_Tree_Ent * y;
         if (z->parent == z->parent->parent->left) {
             y = z->parent->parent->right;
             if (y->color == RED) {
@@ -143,11 +102,11 @@ void Insert_Fixup(rb_tree* T, rb_node *z) {
             } else {
                 if (z == z->parent->right) {
                     z = z->parent;
-                    Left_Rotate(T, z);
+                    Left_Rotate_Ent(T, z);
                 }
                 z->parent->color = BLACK;
                 z->parent->parent->color = RED;
-                Right_Rotate(T, z->parent->parent);
+                Right_Rotate_Ent(T, z->parent->parent);
             }
         } else {
             y = z->parent->parent->left;
@@ -159,29 +118,27 @@ void Insert_Fixup(rb_tree* T, rb_node *z) {
             } else {
                 if (z == z->parent->left) {
                     z = z->parent;
-                    Right_Rotate(T, z);
+                    Right_Rotate_Ent(T, z);
                 }
                 z->parent->color = BLACK;
                 z->parent->parent->color = RED;
-                Left_Rotate(T, z->parent->parent);
+                Left_Rotate_Ent(T, z->parent->parent);
             }
         }
     }
     T->root->color = BLACK;
 }
 
-void Insert(rb_tree * T, rb_node * z) {
-    rb_node *x, *y;
+void Insert_Ent(RB_Tree_Ent_Head * T, RB_Tree_Ent * z) {
+    RB_Tree_Ent *x, *y;
     int cmp;
     y = T->nil;
     x = T->root;
     while (x != T->nil) {
         y = x;
-        cmp = strcmp(z->key, x->key);
+        cmp = strcmp(z->ent_name, x->ent_name);
         if (cmp < 0) {
             x = x->left;
-        } else if (cmp == 0) {
-            return;
         } else {
             x = x->right;
         }
@@ -189,7 +146,7 @@ void Insert(rb_tree * T, rb_node * z) {
     z->parent = y;
     if (y == T->nil) {
         T->root = z;
-    } else if (strcmp(z->key, y->key) < 0) {
+    } else if (strcmp(z->ent_name, y->ent_name) < 0) {
         y->left = z;
     } else {
         y->right = z;
@@ -197,37 +154,10 @@ void Insert(rb_tree * T, rb_node * z) {
     z->left = T->nil;
     z->right = T->nil;
     z->color = RED;
-    Insert_Fixup(T, z);
+    Insert_Fixup_Ent(T, z);
 }
 
-void Inorder (rb_node * root, rb_tree *T) {
-    if (root == T->nil) {
-        return;
-    }
-    Inorder(root->left, T);
-    printf("%s\n", root->key);
-    if (root ->relations == NULL) {
-        printf("Nessuna Relazione\n");
-    } else {
-        printf("Relazioni entita':\n");
-        rel_list *temp;
-        for (temp = root ->relations; temp != NULL; temp = temp ->next) {
-            printf("Nome Relazione: %s; # entita' presenti: %d\nNomi entita': ", temp->rel_name, temp->number_of_entities);
-            ent_list *temp_ent;
-            if (temp->ent_list == NULL) {
-                printf("Vuoto");
-            }
-            for (temp_ent = temp->ent_list; temp_ent != NULL; temp_ent = temp_ent->next) {
-                printf("%s, ", temp_ent->ent_node->key);
-            }
-        }
-        printf("\n");
-    }
-    Inorder(root->right, T);
-
-}
-
-void Transplant(rb_tree * T, rb_node *u, rb_node *v) {
+void Transplant_Ent(RB_Tree_Ent_Head * T, RB_Tree_Ent *u, RB_Tree_Ent *v) {
     if (u->parent == T->nil) {
         T->root = v;
     } else if (u == u->parent->left) {
@@ -238,14 +168,15 @@ void Transplant(rb_tree * T, rb_node *u, rb_node *v) {
     v->parent = u->parent;
 }
 
-rb_node* Find (rb_tree *T, char *name, rb_node *root) {
+RB_Tree_Ent * Find_Ent (RB_Tree_Ent_Head *T, char *name, RB_Tree_Ent *root) {
     if (root != T->nil) {
-        if (strcmp(root->key, name) == 0) {
+        int cmp = strcmp(root->ent_name, name);
+        if (cmp == 0) {
             return root;
-        } else if (strcmp(root -> key, name) > 0) {
-            Find (T, name, root -> left);
+        } else if (cmp > 0) {
+            Find_Ent (T, name, root -> left);
         } else {
-            Find(T, name, root -> right);
+            Find_Ent(T, name, root -> right);
         }
     }
     else {
@@ -253,15 +184,15 @@ rb_node* Find (rb_tree *T, char *name, rb_node *root) {
     }
 }
 
-void Delete_Fixup(rb_tree *T, rb_node *x) {
-    rb_node *w;
+void Delete_Fixup_Ent(RB_Tree_Ent_Head *T, RB_Tree_Ent *x) {
+    RB_Tree_Ent *w;
     while (x != T->root && x->color == BLACK) {
         if (x == x->parent->left) {
             w = x->parent->right;
             if (w->color == RED) {
                 w->color = BLACK;
                 x->parent->color = RED;
-                Left_Rotate(T, x->parent);
+                Left_Rotate_Ent(T, x->parent);
                 w = x->parent->right;
             }
             if (w->left->color == BLACK && w->right->color == BLACK) {
@@ -271,20 +202,20 @@ void Delete_Fixup(rb_tree *T, rb_node *x) {
                 if (w->right->color == BLACK) {
                     w->left->color = BLACK;
                     w->color = RED;
-                    Right_Rotate(T, w);
+                    Right_Rotate_Ent(T, w);
                     w->color = x->parent->color;
                 }
                 w->color = x->parent->color;
                 x->parent->color = BLACK;
                 w->right->color = BLACK;
-                Left_Rotate(T, x->parent);
+                Left_Rotate_Ent(T, x->parent);
                 x = T->root;
             }
         } else {w = x->parent->left;
             if (x->color == RED) {
                 w->color = BLACK;
                 x->parent->color = RED;
-                Right_Rotate(T, x->parent);
+                Right_Rotate_Ent(T, x->parent);
                 w = x->parent->left;
             }
             if (w->right->color == BLACK && w->left->color == BLACK) {
@@ -294,13 +225,13 @@ void Delete_Fixup(rb_tree *T, rb_node *x) {
                 if (w->left->color == BLACK) {
                     w->right->color = BLACK;
                     w->color = RED;
-                    Left_Rotate(T, w);
+                    Left_Rotate_Ent(T, w);
                     w = x->parent->left;
                 }
                 w->color = x->parent->color;
                 x->parent->color = BLACK;
                 w->left->color = BLACK;
-                Right_Rotate(T, x->parent);
+                Right_Rotate_Ent(T, x->parent);
                 x = T->root;
             }
         }
@@ -308,51 +239,40 @@ void Delete_Fixup(rb_tree *T, rb_node *x) {
     x->color = BLACK;
 }
 
-void Delete(rb_tree *T, rb_node *z) {
-    rb_node *y, *x;
+void Delete_Ent(RB_Tree_Ent_Head *T, RB_Tree_Ent *z) {
+    RB_Tree_Ent *y, *x;
     y = z;
     char y_original_color = y->color;
     if (z->left == T->nil) {
         x = z->right;
-        Transplant(T, z, z->right);
+        Transplant_Ent(T, z, z->right);
     } else if (z->right == T->nil) {
         x = z->left;
-        Transplant(T, z, z->left);
+        Transplant_Ent(T, z, z->left);
     } else {
-        y = Minimum(T, z->right);
+        y = Minimum_Ent(T, z->right);
         y_original_color = y->color;
         x = y->right;
         if (y->parent == z) {
             x->parent = y;
         } else {
-            Transplant(T, y, y->right);
+            Transplant_Ent(T, y, y->right);
             y->right = z->right;
             y->right->parent = y;
         }
-        Transplant(T, z, y);
+        Transplant_Ent(T, z, y);
         y->left = z->left;
         y->left->parent = y;
         y->color = z->color;
     }
     if (y_original_color == BLACK) {
-        Delete_Fixup(T, x);
+        Delete_Fixup_Ent(T, x);
     }
 }
 
-// Relations tree
-typedef struct rb_node_rel_s {
-    char *key;
-    char color;
-    int num_of_receivers;
-    struct rb_node_rel_s *left, *right, *parent;
-} rb_node_rel;
-
-typedef struct rb_tree_rel_s {
-    rb_node_rel *root, *nil;
-}rb_tree_rel;
-
-void Left_Rotate_Rel (rb_tree_rel * T, rb_node_rel * x){
-    rb_node_rel * y = x -> right;
+//Ent Rel Tree Functions
+void Left_Rotate_Ent_Rel (RB_Tree_Ent_Rel_Head * T, RB_Tree_Ent_Rel * x){
+    RB_Tree_Ent_Rel * y = x -> right;
     x -> right = y -> left;
     if (y -> left != T -> nil) {
         y -> left -> parent = x;
@@ -369,8 +289,8 @@ void Left_Rotate_Rel (rb_tree_rel * T, rb_node_rel * x){
     x->parent = y;
 }
 
-void Right_Rotate_Rel (rb_tree_rel * T, rb_node_rel * y) {
-    rb_node_rel * x = y -> left;
+void Right_Rotate_Ent_Rel (RB_Tree_Ent_Rel_Head * T, RB_Tree_Ent_Rel * y) {
+    RB_Tree_Ent_Rel * x = y -> left;
     y->left = x->right;
     if (x->right != T->nil) {
         x->right->parent = y;
@@ -387,16 +307,242 @@ void Right_Rotate_Rel (rb_tree_rel * T, rb_node_rel * y) {
     y->parent = x;
 }
 
-rb_node_rel * Minimum_Rel (rb_tree_rel *T, rb_node_rel *n) {
+RB_Tree_Ent_Rel * Minimum_Ent_Rel (RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *n) {
     while (n->left != T->nil) {
         n = n->left;
     }
     return n;
 }
 
-void Insert_Fixup_Rel(rb_tree_rel *T, rb_node_rel *z) {
+void Insert_Fixup_Ent_Rel(RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *z) {
     while (z->parent->color == RED) {
-        rb_node_rel * y;
+        RB_Tree_Ent_Rel * y;
+        if (z->parent == z->parent->parent->left) {
+            y = z->parent->parent->right;
+            if (y->color == RED) {
+                z->parent->color = BLACK;
+                y->color = BLACK;
+                z->parent->parent->color = RED;
+                z = z->parent->parent;
+            } else {
+                if (z == z->parent->right) {
+                    z = z->parent;
+                    Left_Rotate_Ent_Rel(T, z);
+                }
+                z->parent->color = BLACK;
+                z->parent->parent->color = RED;
+                Right_Rotate_Ent_Rel(T, z->parent->parent);
+            }
+        } else {
+            y = z->parent->parent->left;
+            if (y->color == RED) {
+                z->parent->color = BLACK;
+                y->color = BLACK;
+                z->parent->parent->color = RED;
+                z = z->parent->parent;
+            } else {
+                if (z == z->parent->left) {
+                    z = z->parent;
+                    Right_Rotate_Ent_Rel(T, z);
+                }
+                z->parent->color = BLACK;
+                z->parent->parent->color = RED;
+                Left_Rotate_Ent_Rel(T, z->parent->parent);
+            }
+        }
+    }
+    T->root->color = BLACK;
+}
+
+RB_Tree_Ent_Rel *Insert_Ent_Rel(RB_Tree_Ent_Rel_Head * T, RB_Tree_Ent_Rel * z) {
+    RB_Tree_Ent_Rel *x, *y;
+    int cmp;
+    y = T->nil;
+    x = T->root;
+    while (x != T->nil) {
+        y = x;
+        cmp = strcmp(z->ent_name, x->ent_name);
+        if (cmp < 0) {
+            x = x->left;
+        } else {
+            x = x->right;
+        }
+    }
+    z->parent = y;
+    if (y == T->nil) {
+        T->root = z;
+    } else if (strcmp(z->ent_name, y->ent_name) < 0) {
+        y->left = z;
+    } else {
+        y->right = z;
+    }
+    z->left = T->nil;
+    z->right = T->nil;
+    z->color = RED;
+    Insert_Fixup_Ent_Rel(T, z);
+    return z;
+}
+
+void Transplant_Ent_Rel(RB_Tree_Ent_Rel_Head * T, RB_Tree_Ent_Rel *u, RB_Tree_Ent_Rel *v) {
+    if (u->parent == T->nil) {
+        T->root = v;
+    } else if (u == u->parent->left) {
+        u->parent->left = v;
+    } else {
+        u->parent->right = v;
+    }
+    v->parent = u->parent;
+}
+
+RB_Tree_Ent_Rel * Find_Ent_Rel (RB_Tree_Ent_Rel_Head *T, char *name, RB_Tree_Ent_Rel *root) {
+    if (root != T->nil) {
+        int cmp = strcmp(root->ent_name, name);
+        if (cmp == 0) {
+            return root;
+        } else if (cmp > 0) {
+            Find_Ent_Rel (T, name, root -> left);
+        } else {
+            Find_Ent_Rel(T, name, root -> right);
+        }
+    }
+    else {
+        return NULL;
+    }
+}
+
+void Delete_Fixup_Ent_Rel(RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *x) {
+    RB_Tree_Ent_Rel *w;
+    while (x != T->root && x->color == BLACK) {
+        if (x == x->parent->left) {
+            w = x->parent->right;
+            if (w->color == RED) {
+                w->color = BLACK;
+                x->parent->color = RED;
+                Left_Rotate_Ent_Rel(T, x->parent);
+                w = x->parent->right;
+            }
+            if (w->left->color == BLACK && w->right->color == BLACK) {
+                w->color = RED;
+                x = x->parent;
+            } else {
+                if (w->right->color == BLACK) {
+                    w->left->color = BLACK;
+                    w->color = RED;
+                    Right_Rotate_Ent_Rel(T, w);
+                    w->color = x->parent->color;
+                }
+                w->color = x->parent->color;
+                x->parent->color = BLACK;
+                w->right->color = BLACK;
+                Left_Rotate_Ent_Rel(T, x->parent);
+                x = T->root;
+            }
+        } else {w = x->parent->left;
+            if (x->color == RED) {
+                w->color = BLACK;
+                x->parent->color = RED;
+                Right_Rotate_Ent_Rel(T, x->parent);
+                w = x->parent->left;
+            }
+            if (w->right->color == BLACK && w->left->color == BLACK) {
+                w->color = RED;
+                x = x->parent;
+            } else {
+                if (w->left->color == BLACK) {
+                    w->right->color = BLACK;
+                    w->color = RED;
+                    Left_Rotate_Ent_Rel(T, w);
+                    w = x->parent->left;
+                }
+                w->color = x->parent->color;
+                x->parent->color = BLACK;
+                w->left->color = BLACK;
+                Right_Rotate_Ent_Rel(T, x->parent);
+                x = T->root;
+            }
+        }
+    }
+    x->color = BLACK;
+}
+
+void Delete_Ent_Rel(RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *z) {
+    RB_Tree_Ent_Rel *y, *x;
+    y = z;
+    char y_original_color = y->color;
+    if (z->left == T->nil) {
+        x = z->right;
+        Transplant_Ent_Rel(T, z, z->right);
+    } else if (z->right == T->nil) {
+        x = z->left;
+        Transplant_Ent_Rel(T, z, z->left);
+    } else {
+        y = Minimum_Ent_Rel(T, z->right);
+        y_original_color = y->color;
+        x = y->right;
+        if (y->parent == z) {
+            x->parent = y;
+        } else {
+            Transplant_Ent_Rel(T, y, y->right);
+            y->right = z->right;
+            y->right->parent = y;
+        }
+        Transplant_Ent_Rel(T, z, y);
+        y->left = z->left;
+        y->left->parent = y;
+        y->color = z->color;
+    }
+    if (y_original_color == BLACK) {
+        Delete_Fixup_Ent_Rel(T, x);
+    }
+}
+
+//Relation Tree Functions
+void Left_Rotate_Rel (RB_Tree * T, RB_Node * x){
+    RB_Node * y = x -> right;
+    x -> right = y -> left;
+    if (y -> left != T -> nil) {
+        y -> left -> parent = x;
+    }
+    y -> parent = x -> parent;
+    if (x -> parent == T -> nil) {
+        T->root = y;
+    } else if (x == x->parent->left) {
+        x->parent->left = y;
+    } else {
+        x->parent->right = y;
+    }
+    y->left = x;
+    x->parent = y;
+}
+
+void Right_Rotate_Rel (RB_Tree * T, RB_Node * y) {
+    RB_Node * x = y -> left;
+    y->left = x->right;
+    if (x->right != T->nil) {
+        x->right->parent = y;
+    }
+    x->parent = y->parent;
+    if (y->parent == T->nil) {
+        T->root = x;
+    } else if (y == y->parent->left) {
+        y->parent->left = x;
+    } else {
+        y->parent->right = x;
+    }
+    x->right = y;
+    y->parent = x;
+}
+
+RB_Node * Minimum_Rel (RB_Tree *T, RB_Node *n) {
+    while (n->left != T->nil) {
+        n = n->left;
+    }
+    return n;
+}
+
+void Insert_Fixup_Rel(RB_Tree *T, RB_Node *z) {
+    while (z->parent->color == RED) {
+        RB_Node * y;
         if (z->parent == z->parent->parent->left) {
             y = z->parent->parent->right;
             if (y->color == RED) {
@@ -434,18 +580,16 @@ void Insert_Fixup_Rel(rb_tree_rel *T, rb_node_rel *z) {
     T->root->color = BLACK;
 }
 
-void Insert_Rel(rb_tree_rel * T, rb_node_rel * z) {
-    rb_node_rel *x, *y;
+RB_Node *Insert_Rel(RB_Tree * T, RB_Node * z) {
+    RB_Node *x, *y;
     int cmp;
     y = T->nil;
     x = T->root;
     while (x != T->nil) {
         y = x;
-        cmp = strcmp(z->key, x->key);
+        cmp = strcmp(z->rel_name, x->rel_name);
         if (cmp < 0) {
             x = x->left;
-        } else if (cmp == 0) {
-            return;
         } else {
             x = x->right;
         }
@@ -453,7 +597,7 @@ void Insert_Rel(rb_tree_rel * T, rb_node_rel * z) {
     z->parent = y;
     if (y == T->nil) {
         T->root = z;
-    } else if (strcmp(z->key, y->key) < 0) {
+    } else if (strcmp(z->rel_name, y->rel_name) < 0) {
         y->left = z;
     } else {
         y->right = z;
@@ -462,19 +606,10 @@ void Insert_Rel(rb_tree_rel * T, rb_node_rel * z) {
     z->right = T->nil;
     z->color = RED;
     Insert_Fixup_Rel(T, z);
+    return z;
 }
 
-void Inorder_Rel (rb_node_rel * root, rb_tree_rel *T) {
-    if (root == T->nil) {
-        return;
-    }
-    Inorder_Rel(root->left, T);
-    printf("%s, entita' che la usano: %d\n", root->key, root->num_of_receivers);
-    Inorder_Rel(root->right, T);
-
-}
-
-void Transplant_Rel(rb_tree_rel * T, rb_node_rel *u, rb_node_rel *v) {
+void Transplant_Rel(RB_Tree * T, RB_Node *u, RB_Node *v) {
     if (u->parent == T->nil) {
         T->root = v;
     } else if (u == u->parent->left) {
@@ -485,11 +620,12 @@ void Transplant_Rel(rb_tree_rel * T, rb_node_rel *u, rb_node_rel *v) {
     v->parent = u->parent;
 }
 
-rb_node_rel * Find_Rel (rb_tree_rel *T, char *name, rb_node_rel *root) {
+RB_Node * Find_Rel (RB_Tree *T, char *name, RB_Node *root) {
     if (root != T->nil) {
-        if (strcmp(root->key, name) == 0) {
+        int cmp = strcmp(root->rel_name, name);
+        if (cmp == 0) {
             return root;
-        } else if (strcmp(root -> key, name) > 0) {
+        } else if (cmp > 0) {
             Find_Rel (T, name, root -> left);
         } else {
             Find_Rel(T, name, root -> right);
@@ -500,8 +636,8 @@ rb_node_rel * Find_Rel (rb_tree_rel *T, char *name, rb_node_rel *root) {
     }
 }
 
-void Delete_Fixup_Rel(rb_tree_rel *T, rb_node_rel *x) {
-    rb_node_rel *w;
+void Delete_Fixup_Rel(RB_Tree *T, RB_Node *x) {
+    RB_Node *w;
     while (x != T->root && x->color == BLACK) {
         if (x == x->parent->left) {
             w = x->parent->right;
@@ -555,8 +691,8 @@ void Delete_Fixup_Rel(rb_tree_rel *T, rb_node_rel *x) {
     x->color = BLACK;
 }
 
-void Delete_Rel(rb_tree_rel *T, rb_node_rel *z) {
-    rb_node_rel *y, *x;
+void Delete_Rel(RB_Tree *T, RB_Node *z) {
+    RB_Node *y, *x;
     y = z;
     char y_original_color = y->color;
     if (z->left == T->nil) {
@@ -586,14 +722,13 @@ void Delete_Rel(rb_tree_rel *T, rb_node_rel *z) {
     }
 }
 
-rb_tree* Create_Tree () {
-    rb_tree * T;
-    T = (rb_tree*)malloc(sizeof(rb_tree));
-    rb_node *nil;
-    nil =(rb_node*)malloc(sizeof(rb_node));
+//Entities Creation
+RB_Tree_Ent_Head * Create_Ent_Head () {
+    RB_Tree_Ent_Head * T = malloc(sizeof(RB_Tree_Ent_Head));
+    RB_Tree_Ent *nil = malloc(sizeof(RB_Tree_Ent));
     T->root = nil;
     T->nil = nil;
-    nil -> key = NULL;
+    nil -> ent_name = NULL;
     nil ->color = BLACK;
     nil->right = nil;
     nil->left = nil;
@@ -601,42 +736,59 @@ rb_tree* Create_Tree () {
     return T;
 }
 
-rb_node* Create_Node (char *name) {
-    rb_node *temp;
-    temp =(rb_node*)malloc(sizeof(rb_node));
-    int i;
-    int len = 0;
-    for (len = 0; name[len] != '\0'; len++);
-    char * temp_name;
-    temp_name = (char*)malloc((len+1) *sizeof(char));
-    for (i = 0; i < len; i++) {
-        temp_name[i] = name[i];
-    }
-    temp_name[len] = '\0';
-    temp->relations = NULL;
-    temp->key = temp_name;
+RB_Tree_Ent * Create_Ent_Node(char *name) {
+    RB_Tree_Ent *temp = malloc(sizeof(RB_Tree_Ent));
+    temp->ent_name = name;
+    temp->color = BLACK;
     return temp;
 }
 
-//Reletions Creation
-rb_tree_rel * Create_Tree_Rel () {
-    rb_tree_rel * T;
-    T = (rb_tree_rel *)malloc(sizeof(rb_tree_rel));
-    rb_node_rel *nil;
-    nil =(rb_node_rel *)malloc(sizeof(rb_node_rel));
+//Ent in Rel Creation
+RB_Tree_Ent_Rel_Head * Create_Ent_Rel_Head () {
+    RB_Tree_Ent_Rel_Head * T = malloc(sizeof(RB_Tree_Ent_Rel_Head));
+    RB_Tree_Ent_Rel *nil = malloc(sizeof(RB_Tree_Ent_Rel));
     T->root = nil;
     T->nil = nil;
-    nil -> key = NULL;
+    nil -> ent_name = NULL;
     nil ->color = BLACK;
     nil->right = nil;
     nil->left = nil;
     nil->parent = T->root;
+    nil->T_givers = NULL;
+    nil->num_of_givers = 0;
     return T;
 }
 
-rb_node_rel * Create_Node_Rel(char *name) {
-    rb_node_rel *temp;
-    temp =(rb_node_rel *)malloc(sizeof(rb_node_rel));
+RB_Tree_Ent_Rel * Create_Ent_Rel_Node(char *name) {
+    RB_Tree_Ent_Rel *temp = malloc(sizeof(RB_Tree_Ent_Rel));
+    temp->ent_name = name;
+    temp->num_of_givers = 0;
+    temp->T_givers = Create_Ent_Head();
+    temp->color= BLACK;
+    return temp;
+}
+
+//Relations Creation
+RB_Tree * Create_Tree_Rel () {
+    RB_Tree * T;
+    T = (RB_Tree *)malloc(sizeof(RB_Tree));
+    RB_Node *nil;
+    nil =(RB_Node *)malloc(sizeof(RB_Node));
+    T->root = nil;
+    T->nil = nil;
+    nil -> rel_name = NULL;
+    nil ->color = BLACK;
+    nil->right = nil;
+    nil->left = nil;
+    nil->parent = T->root;
+    nil->T_ent = NULL;
+    nil->T_max_ent = NULL;
+    return T;
+}
+
+RB_Node * Create_Node_Rel(char *name) {
+    RB_Node *temp;
+    temp =(RB_Node *)malloc(sizeof(RB_Node));
     int i;
     int len = 0;
     for (len = 0; name[len] != '\0'; len++);
@@ -646,518 +798,584 @@ rb_node_rel * Create_Node_Rel(char *name) {
         temp_name[i] = name[i];
     }
     temp_name[len] = '\0';
-    temp->key = temp_name;
-    temp->num_of_receivers = 1;
+    temp->rel_name = temp_name;
+    temp->color = BLACK;
+    temp->T_max_ent = Create_Ent_Head();
+    temp->max_size = 0;
+    temp->T_ent = Create_Ent_Rel_Head();
+    temp->num_of_entities = 0;
+    temp->num_of_max_entities = 0;
     return temp;
 }
 
-ent_list * Create_Ent_List_Element (rb_node *node) {
-    ent_list *temp;
-    temp = (ent_list *)malloc(sizeof(ent_list) + 1);
-    temp->ent_node = node;
-    temp->next = NULL;
-    return temp;
-}
-
-int Find_Ent_in_Ent_List (rel_list *rel_List, char *name_ent) {
-    ent_list *temp = rel_List->ent_list;
-    while (1) {
-        if (temp == NULL) {
-            return 0;
-        } else if (strcmp(temp->ent_node->key,name_ent) == 0) {
-            return 1;
-        } else {
+//Hash Functions
+hash_element *Find_In_Hash (long key, hash_element *HashTable[], char *ent_name) {
+    if (HashTable[key] == NULL || HashTable[key]->ent_name == NULL) {
+        return NULL;
+    }
+    if (strcmp(HashTable[key]->ent_name, ent_name) == 0) {
+        return HashTable[key];
+    } else {
+        hash_element *temp = HashTable[key]->next;
+        while(temp != NULL) {
+            if (strcmp(temp->ent_name, ent_name) == 0) {
+                return temp;
+            }
             temp = temp->next;
         }
     }
+    return NULL;
 }
 
-void Add_Ent_List_In_Rel_List(rel_list *rel_list, ent_list *ent_element) {
-    ent_list *temp;
-    temp = rel_list->ent_list;
-    rel_list->ent_list = ent_element;
-    ent_element->next = temp;
-}
-
-rel_list * Create_Rel_List_Element(char *name) {
-    int len, i;
-    rel_list *temp;
-    for (len = 0; name[len] != '\0'; len ++);
-    char *key = (char *)malloc((len+1)*sizeof(char));
+void Add_In_Hash (long key, hash_element *HashTable[], char *ent_name) {
+    int i, len = strlen(ent_name);
+    char *name = (char*)malloc(sizeof(char)* (len+1));
     for (i = 0; i < len; i++) {
-        key[i] = name [i];
+        name[i] = ent_name [i];
     }
-    key[len] = '\0';
-    temp = (rel_list *)malloc(sizeof(rel_list) +1 );
-    temp->rel_name = key;
-    temp->next = NULL;
-    temp->number_of_entities = 0;
-    temp->ent_list = NULL;
-    return temp;
-}
-
-void Add_Rel_List_In_Ent_Node (rb_node *node, rel_list *list) {
-    rel_list *temp = node->relations;
-    node->relations = list;
-    list->next = temp;
-}
-
-rel_list * Find_Rel_In_Ent (rb_node *ent, char *name_rel) {
-    rel_list *temp = ent->relations;
-    while (1) {
-        if (temp == NULL) {
-            return NULL;
-        } else if (strcmp(temp->rel_name, name_rel) == 0) {
-            return temp;
-        } else {
-            temp = temp->next;
-        }
-    }
-}
-
-void Debug_Delete_All_Relations(rb_tree_rel *T_rel, rb_node_rel *root) {
-    if (root == T_rel->nil) {
+    name [len] = '\0';
+    if (HashTable[key] == NULL || HashTable[key]->ent_name == NULL) {
+        HashTable[key]->ent_name = name;
+        HashTable[key]->next = NULL;
         return;
     }
-    Debug_Delete_All_Relations(T_rel, root->left);
-    rb_node_rel *temp = root->right;
-    Delete_Rel(T_rel, root);
-    free(root->key);
-    free(root);
-    Debug_Delete_All_Relations(T_rel,temp);
+    hash_element *new = (hash_element *)malloc(sizeof(hash_element));
+    new->ent_name = name;
+    new->next = HashTable[key]->next;
+    HashTable[key]->next = new;
 }
 
-void Debug_Delete_All_Entities (rb_tree *T_ent, rb_node *root) {
+unsigned long hash(unsigned char *str) {
+    unsigned long hash = 5381;
+    int c;
+
+    while (c = *str++)
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash;
+}
+/*
+void Clear_Max_Entities(RB_Tree_Ent_Head *rel_node, RB_Tree_Ent *root) {
+    if (root == rel_node->nil) {
+        return;
+    }
+    Clear_Max_Entities(rel_node, root->left);
+    RB_Tree_Ent *right = root->right;
+    Delete_Ent(rel_node, root);
+    free(root);
+    Clear_Max_Entities(rel_node, right);
+}*/
+
+void Clear_Max (RB_Tree_Ent_Head *rel_node) {
+    RB_Tree_Ent *temp;
+    while (rel_node->root != rel_node->nil) {
+        temp = rel_node->root;
+        Delete_Ent(rel_node, rel_node->root);
+        free(temp);
+    }
+}
+
+void Check_Max(RB_Node *rel_node, RB_Tree_Ent_Rel *ent_node, hash_element *ent2_element) {
+    //se max_size è il massimo, non faccio niente
+    if (rel_node->max_size > ent_node->num_of_givers) {
+        return;
+    }
+    if (rel_node->max_size < ent_node->num_of_givers) {
+        Clear_Max(rel_node->T_max_ent);/*
+        free(rel_node->T_max_ent->nil);
+        free(rel_node->T_max_ent);
+        rel_node->T_max_ent = Create_Ent_Head();*/
+        rel_node->num_of_max_entities = 0;
+        Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(ent2_element->ent_name));
+        rel_node->max_size = ent_node->num_of_givers;
+        rel_node->num_of_max_entities++;
+        return;
+    }
+    //Se uguale
+    if (rel_node->max_size == ent_node->num_of_givers) {
+        Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(ent2_element->ent_name));
+        rel_node->num_of_max_entities++;
+    }
+
+
+
+
+    /*if (rel_node->max_size > ent_node->num_of_givers) {
+        return;
+    }
+    if (rel_node->max_size < ent_node->num_of_givers) {
+        rel_node->max_size = ent_node->num_of_givers;
+        Clear_Max_Entities(rel_node, rel_node->T_max_ent->root);
+        //Aggiungi lo fa la riga sotto
+        Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(ent2_element->ent_name));
+        return;
+    }
+    //hash_element *temp = Find_In_Hash((long) ent_node->hash_key, hash, ent_node->ent_name);
+    RB_Tree_Ent *temp = Find_Ent(rel_node->T_max_ent, ent2_element->ent_name, rel_node->T_max_ent->root);
+    if (temp != NULL) {
+        Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(ent2_element->ent_name));
+    }*/
+}
+
+void Inorder_Max_Tree (RB_Tree_Ent_Head *T, RB_Tree_Ent *root) {
+    if (root == T->nil) {
+        return;
+    }
+    Inorder_Max_Tree(T, root->left);
+    fputs(root->ent_name, stdout);
+    fputc(' ', stdout);
+    Inorder_Max_Tree(T, root->right);
+}
+
+void Inorder_Report_Tree(RB_Tree *T, RB_Node *root) {
+    if (root == T->nil) {
+        return;
+    }
+    Inorder_Report_Tree(T, root->left);
+    fputs(root->rel_name, stdout);
+    fputc(' ', stdout);
+    Inorder_Max_Tree(root->T_max_ent, root->T_max_ent->root);
+    printf("%d", root->max_size);
+    fputs("; ", stdout);
+    Inorder_Report_Tree(T, root->right);
+}
+
+void Search_For_Max_Entities (RB_Node *rel_node, RB_Tree_Ent_Rel_Head *T_ent, RB_Tree_Ent_Rel *root) {
     if (root == T_ent->nil) {
         return;
     }
-    Debug_Delete_All_Entities(T_ent, root->left);
-    rb_node *next_right = root->right;
-    if (root->relations != NULL) {
-        rel_list *current = root->relations; //Head
-        rel_list *next;
-        while (current != NULL) {
-            next = current->next;
-            if (current->ent_list != NULL) {
-                ent_list *current_ent = current->ent_list; //Head
-                ent_list *next_ent;
-                while (current_ent != NULL) {
-                    next_ent = current_ent->next;
-                    free(current_ent);
-                    current_ent = next_ent;
-                }
-            }
-            free(current->rel_name);
-            free(current);
-            current = next;
-        }
-    }
-    free (root->key);
-    free(root);
-    Debug_Delete_All_Entities(T_ent, next_right);
-}
-
-void Delete_One_Ent_From_Ent_List(rel_list *rel_list_element, char *to_be_deleted_name) {
-    ent_list *temp = rel_list_element->ent_list;
-    //Se in testa
-    if (temp != NULL && strcmp(temp->ent_node->key, to_be_deleted_name) == 0) {
-        rel_list_element->ent_list = temp->next;
-        rel_list_element->number_of_entities--;
-        free(temp);
-    } else {
-        ent_list *prev;
-        while (temp != NULL && strcmp(temp->ent_node->key, to_be_deleted_name) != 0) {
-            prev = temp;
-            temp = temp->next;
-        }
-        if (temp != NULL) {
-            prev->next = temp->next;
-            rel_list_element->number_of_entities--;
-            free(temp);
-        }
-    }
-}
-void Delete_Ent_List_In_Specific_Rel (rb_node *ent2_node, char *rel_element, char *ent1, rb_node_rel *rel_node, rb_tree_rel *T) {
-    rel_list *temp = ent2_node->relations;
-    rel_list *prev = NULL;
-    //Se sono in testa a REL
-    if (temp != NULL && strcmp(temp->rel_name, rel_element) == 0) {
-        Delete_One_Ent_From_Ent_List(temp, ent1);
-        if (temp->number_of_entities == 0) {
-            ent2_node->relations = temp->next;
-            rel_node->num_of_receivers--;
-            free(temp->rel_name);
-            free(temp);
-        }
-    } else {
-        while (temp != NULL && strcmp(temp->rel_name, rel_element) != 0) {
-            prev = temp;
-            temp = temp->next;
-        }
-        if (temp != NULL) {
-            Delete_One_Ent_From_Ent_List(temp, ent1);
-            if (temp->number_of_entities == 0) {
-                prev->next = temp->next;
-                rel_node->num_of_receivers--;
-                free(temp->rel_name);
-                free(temp);
-            }
-        }
-    }
-    //Fino a qua va, 0 leaks
-    if (rel_node->num_of_receivers == 0) {
-        Delete_Rel(T, rel_node);
-        free(rel_node->key);
-        free(rel_node);
-    }
-}
-
-void Delete_Ent_List(rel_list *rel_list_element, char *to_be_deleted_name){
-    rel_list *cycle_rel = rel_list_element;
-    while (cycle_rel != NULL) {
-        ent_list *temp, *prev;
-        temp = rel_list_element->ent_list;
-        //Se in testa
-        if (temp != NULL && strcmp(temp->ent_node->key, to_be_deleted_name) == 0) {
-            rel_list_element->ent_list = temp->next;
-            rel_list_element->number_of_entities--;
-            free(temp);
-        } else {
-            while (temp != NULL && strcmp(temp->ent_node->key, to_be_deleted_name) != 0) {
-                prev = temp;
-                temp = temp->next;
-            }
-            if (temp != NULL) {
-                prev->next = temp->next;
-                cycle_rel->number_of_entities--;
-                free(temp);
-            }
-        }
-        cycle_rel = cycle_rel->next;
-    }
-}
-
-void Delete_Empty_Rel_List (rb_node *root, rb_tree_rel *T) {
-    if (root->relations == NULL) {
-        return;
-    }
-    rel_list *temp = root->relations;
-    rel_list *prev;
-    if (temp != NULL && temp->number_of_entities == 0) {
-        root->relations = temp->next;
-        rb_node_rel *temp_node_rel = Find_Rel(T, temp->rel_name, T->root);
-        temp_node_rel->num_of_receivers--;
-        free(temp->rel_name);
-        free(temp);
-    } else {
-        while (temp != NULL && temp->number_of_entities != 0) {
-            prev = temp;
-            temp = temp->next;
-        }
-        if (temp != NULL) {
-            prev->next = temp->next;
-            rb_node_rel *temp_node_rel = Find_Rel(T, temp->rel_name, T->root);
-            temp_node_rel->num_of_receivers--;
-            free(temp->rel_name);
-            free(temp);
-        }
-    }
-}
-
-void Inorder_Delete_Ent_Elements (rb_tree *T, rb_node *root, char *ent_name, rb_tree_rel *T_rel) {
-    if (root == T->nil) {
-        return;
-    }
-    Inorder_Delete_Ent_Elements(T, root->left, ent_name, T_rel);
-
-    //Funziona, NO LEAKS
-    Delete_Ent_List(root->relations, ent_name);
-    //Funziona, NO LEAKS
-    Delete_Empty_Rel_List(root, T_rel);
-
-    Inorder_Delete_Ent_Elements(T, root->right, ent_name, T_rel);
-}
-
-void Delete_Rel_List (rb_node *node, char *rel_name) {
-    if (node->relations == NULL) {
-        return;
-    }
-    rel_list *temp = node->relations;
-    rel_list *prev;
-    int i;
-    if (temp != NULL && strcmp(temp->rel_name, rel_name) == 0) {
-        node->relations = temp->next;
-        ent_list *temp_ent = temp->ent_list;
-        for (i = temp->number_of_entities; i != 0; i--) {
-            if (temp_ent != NULL) {
-                temp->ent_list = temp_ent->next;
-                free(temp_ent);
-                temp_ent = temp->ent_list;
-            }
-        }
-        free(temp->rel_name);
-        free(temp);
-    } else {
-        while (temp != NULL && strcmp(temp->rel_name, rel_name) != 0) {
-            prev = temp;
-            temp = temp->next;
-        }
-        if (temp != NULL) {
-            prev->next = temp->next;
-            ent_list *temp_ent = temp->ent_list;
-            for (i = temp->number_of_entities; i != 0; i++) {
-                if (temp_ent != NULL) {
-                    temp->ent_list = temp_ent->next;
-                    free(temp_ent);
-                    temp_ent = temp->ent_list;
-                }
-            }
-            free(temp->rel_name);
-            free(temp);
-        }
-    }
-}
-
-void Inorder_Delete_Rel_Elements (rb_tree *T, rb_node *root, char *rel_name) {
-    if (root == T->nil) {
-        return;
-    }
-    Inorder_Delete_Rel_Elements(T, root->left, rel_name);
-
-    Delete_Rel_List(root, rel_name);
-
-    Inorder_Delete_Rel_Elements(T, root->right, rel_name);
-}
-
-void Delete_Rel_Node (rb_tree_rel *T, rb_node_rel *root ) {
-    if (root == T->nil) {
-        return;
-    }
-    Delete_Rel_Node(T, root->left);
-     if (root->num_of_receivers == 0) {
-         Delete_Rel(T, root);
-         free(root->key);
-         free(root);
-     }
-     Delete_Rel_Node(T, root->right);
-}
-
-void Inorder_Report_Elements (rb_tree *T, rb_node *root, report_tree *T_report, int max, char *rel_name) {
-    if (root == T->nil) {
-        return;
-    }
-    Inorder_Report_Elements(T, root->left, T_report, max, rel_name);
-
+    //Scorro tutto l'albero
+    Search_For_Max_Entities(rel_node, T_ent, root->left);
     //
-    rel_list *temp = root->relations;
-    while (temp != NULL && strcmp(temp->rel_name, rel_name) != 0) {
-        temp = temp->next;
-    }
-    //TODO -> Il report ha dei problemi con la cancellazione della struttura.
-    //TODO -> Ho delle relazioni che hanno # = 0 . potrebbe essere un errore di delrel o delent
-    if (temp != NULL) {
-        if (temp->number_of_entities < T_report->quantity) {
-            //do nothing
-        } else if (temp->number_of_entities == T_report->quantity) {
-            Insert_Report_Element(T_report, Create_Report_Node(root->key), temp->number_of_entities);
-        } else {
-            Clean_Report_List(T_report);
-            Insert_Report_Element(T_report, Create_Report_Node(root->key), temp->number_of_entities);
-        }
+    if (rel_node->max_size == root->num_of_givers) {
+        Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(root->ent_name));
+        rel_node->num_of_max_entities++;
+        //aggiungo
+    } else if (rel_node->max_size < root->num_of_givers) {
+        //Cancello e sostituisco
+        Clear_Max(rel_node->T_max_ent);
+        rel_node->num_of_max_entities = 0;
+        Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(root->ent_name));
+        rel_node->max_size = root->num_of_givers;
+        rel_node->num_of_max_entities++;
     }
 
-    Inorder_Report_Elements(T, root->right, T_report, max, rel_name);
+    Search_For_Max_Entities(rel_node, T_ent, root->right);
 }
 
-void Print_Report (report_tree *T, char *rel_name) {
-    //TODO -> Sostituire printf con fputs
-    if (T->quantity != 0) {
-        printf("\"%s\" ", rel_name);
-        report_node *temp = T->head;
-        while (temp != NULL) {
-            printf("\"%s\" ", temp->name);
-            temp = temp->next;
+
+void Delete_One_Ent_From_Max (RB_Tree *T, RB_Node *root, char *name) {
+    //Se ho più di un entita, elimino semplicemnte la mia entita dai massimi
+    if (root->num_of_max_entities > 1) {
+        RB_Tree_Ent *temp = Find_Ent(root->T_max_ent, name, root->T_max_ent->root);
+        Delete_Ent(root->T_max_ent, temp);
+        free(temp);
+        root->num_of_max_entities--;
+        return;
+    }
+    //Se ho più di un entita, elimino l'entità e...
+    RB_Tree_Ent *temp = Find_Ent(root->T_max_ent, name, root->T_max_ent->root);
+    Delete_Ent(root->T_max_ent, temp);
+    free(temp);
+    root->num_of_max_entities--;
+    root->max_size = 0;
+    //E... ricerco il/i nuovo/i max
+    Search_For_Max_Entities(root, root->T_ent, root->T_ent->root);
+}
+
+void Delete_One_Ent_From_EntRel (RB_Tree_Ent *ent1_node, RB_Tree_Ent_Rel *ent2_node, RB_Node *rel_node, RB_Tree *T) {
+    Delete_Ent(ent2_node->T_givers, ent1_node);
+    free(ent1_node);
+    ent2_node->num_of_givers--;
+    //Controllo se era tra i max
+    if (rel_node->max_size == (ent2_node->num_of_givers +1)) {
+        //TODO -> Elimino ent2_node dai max. Se i max ha 1 sola entità (ent2_node) devo ricercare il massimo
+        Delete_One_Ent_From_Max(T, rel_node, ent2_node->ent_name);
+    }
+    if (ent2_node->num_of_givers == 0) {
+        Delete_Ent_Rel(rel_node->T_ent, ent2_node);
+        free(ent2_node->T_givers->nil);
+        free(ent2_node->T_givers);
+        free(ent2_node);
+        rel_node->num_of_entities--;
+        if (rel_node->num_of_entities == 0) {
+            Clear_Max(rel_node->T_max_ent);
+            Delete_Rel(T, rel_node);
+            free(rel_node->T_max_ent->nil);
+            free(rel_node->T_max_ent);
+            free(rel_node->T_ent->nil);
+            free(rel_node->T_ent);
+            free(rel_node);
         }
-        printf("%d;", T->quantity);
-        if (temp->next != NULL);
-        printf (" ");
-        //fputs( , stdout);
     }
 }
 
-void Inorder_Report_Tree (rb_tree_rel *T, rb_node_rel *root, rb_tree *T_ent) {
+
+//Debug Functions
+void debug_print_all_3 (RB_Tree_Ent_Head *T, RB_Tree_Ent *root) {
     if (root == T->nil) {
         return;
     }
-    Inorder_Report_Tree(T, root->left, T_ent);
-
-    report_tree *reportTree = Create_Report_Tree();
-    Inorder_Report_Elements(T_ent, T_ent->root, reportTree, root->num_of_receivers, root->key);
-    //Stampa del report
-    Print_Report(reportTree, root->key);
-    //Pulizia dell'albero
-    Clean_Report_List(reportTree);
-    Clean_Report_Tree(reportTree);
-
-    Inorder_Report_Tree(T, root->right, T_ent);
+    debug_print_all_3(T, root->left);
+    //
+    printf("%s", root->ent_name);
+    debug_print_all_3(T, root->right);
 }
 
-void parseWord (char *word) {
-    int len, i;
-    len = strlen(word);
-    for (i = 0; i <= len; i++) {
-        if (word[i] == '"') {
-            word[i] = '\0';
+void debug_print_all_2 (RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *root) {
+    if (root == T->nil) {
+        return;
+    }
+    debug_print_all_2(T, root->left);
+    //
+    printf("Entita %s, #givers %d\n", root->ent_name, root->num_of_givers);
+    debug_print_all_3(root->T_givers, root->T_givers->root);
+    printf("\n");
+    debug_print_all_2(T, root->right);
+}
+
+void debug_print_all_max(RB_Tree_Ent_Head *T, RB_Tree_Ent *root) {
+    if (root == T->nil) {
+        return;
+    }
+    debug_print_all_max(T, root->left);
+    //
+    printf("%s, ", root->ent_name);
+    debug_print_all_max(T, root->right);
+}
+
+void debug_print_all(RB_Tree *T, RB_Node *root){
+    if (root == T->nil) {
+        return;
+    }
+    debug_print_all(T, root->left);
+    //
+    printf("Relazione: %s MAX: %d, num_of_max_ent %d\nMax_Ents: ", root->rel_name, root->max_size, root->num_of_max_entities);
+    debug_print_all_max(root->T_max_ent, root->T_max_ent->root);
+    printf("\n");
+    debug_print_all_2(root->T_ent, root->T_ent->root);
+    debug_print_all(T, root->right);
+}
+
+void debug_delete_max_entities(RB_Tree_Ent_Head *rel_node, RB_Tree_Ent *root) {
+    RB_Tree_Ent *temp;
+    while (rel_node->root != rel_node->nil) {
+        temp = rel_node->root;
+        Delete_Ent(rel_node, rel_node->root);
+        free(temp);
+    }
+}
+
+void debug_inorder_ent (RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *root) {
+    if (root == T->nil) {
+        return;
+    }
+    debug_inorder_ent(T, root->left);
+    debug_delete_max_entities(root->T_givers, root->T_givers->root);
+    debug_inorder_ent(T, root->right);
+}
+
+void debug_delete_t_divers_check(RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *root) {
+    if (root == T->nil) {
+        return;
+    }
+    debug_delete_t_divers_check(T, root->left);
+    //
+    debug_delete_max_entities(root->T_givers, root->T_givers->root);
+    free(root->T_givers->nil);
+    free(root->T_givers);
+    //
+    debug_delete_t_divers_check(T, root->right);
+}
+
+void debug_delete_T_Ent (RB_Tree_Ent_Rel_Head *T) {
+    RB_Tree_Ent_Rel *temp;
+    while (T->root != T->nil) {
+        temp = T->root;
+        Delete_Ent_Rel(T, T->root);
+        free(temp);
+    }
+}
+
+void debug_delete_max_check (RB_Tree *T, RB_Node *root) {
+    if (root == T->nil) {
+        return;
+    }
+    debug_delete_max_check(T, root->left);
+    //
+    //Cancello le max ent e la struttura che ne fa riferimento
+    debug_delete_max_entities(root->T_max_ent, root->T_max_ent->root);
+    free(root->T_max_ent->nil);
+    free(root->T_max_ent);
+    //Chiamo la funz che cancellerà i T_Givers di ogni nodo delle entita
+    debug_delete_t_divers_check(root->T_ent, root->T_ent->root);
+    //Cancello le entità e ogni riferimento alla struttura
+    debug_delete_T_Ent(root->T_ent);
+    free(root->T_ent->nil);
+    free(root->T_ent);
+    //
+    debug_delete_max_check(T, root->right);
+}
+
+void debug_delete_T_Rel (RB_Tree *T) {
+    RB_Node *temp;
+    while (T->root != T->nil) {
+        temp = T->root;
+        Delete_Rel(T, T->root);
+        free(temp->rel_name);
+        free(temp);
+    }
+}
+
+void debug_free_hashmap (hash_element *ht[]) {
+    int i;
+    for ( i = 0; i < Hash_Size; i++) {
+        if (ht[i] != NULL) {
+            hash_element *temp = ht[i];
+            while (temp != NULL) {
+                ht[i] = ht[i]->next;
+                free(temp->ent_name);
+                free(temp);
+                temp = ht[i];
+            }
         }
     }
 }
 
-int main () {
-
-    //Variabili
-    char *comand, rel[MAX_LEN], ent1[MAX_LEN], ent2[MAX_LEN], temp;
-    int len, loop, isRead;
-    int i = 0;
-    int ext_loop = 1;
-    rb_tree * T_ent;
-    T_ent = Create_Tree();
-    rb_tree_rel *T_rel;
+int main() {
+    hash_element *hashTable[Hash_Size];
+    int i;
+    for (i = 0; i < Hash_Size; i++) {
+        hashTable[i] = malloc(sizeof(hash_element));
+        if (hashTable[i] != NULL) {
+            hashTable[i]->ent_name = NULL;
+            hashTable[i]->next = NULL;
+        }
+    }
+    unsigned long num;
+    RB_Tree *T_rel;
     T_rel = Create_Tree_Rel();
+    //char line[100];
+    char *line;
+    //
+    size_t bufsize = 100;
+    size_t  chars;
+    line = (char *)malloc(sizeof(char) *bufsize);
+    //
+    int ent1_key;
+    int ent2_key;
+    char *ent1;
+    char *ent2;
+    char *rel;
+    //DA TOGLIEREEEE
+    freopen("input.txt", "r", stdin);
+    //
+    while (1) {
+        //chars = getline(&line, &bufsize, stdin);
+        fgets(line, 100, stdin);
+        char *tok = strtok(line, " \n");
+        if (strcmp(tok, "report") == 0) {
+            if (T_rel->root == T_rel->nil) {
+                fputs("none\n", stdout);
+            } else {
+                Inorder_Report_Tree(T_rel, T_rel->root);
+                fputs("\n", stdout);
 
+            }
+        } else if (strcmp(tok, "addent") == 0) {
+            tok = strtok(NULL, " \n");
+            num = hash((unsigned char*) tok);
+            if (Find_In_Hash(num%Hash_Size, hashTable, tok) == NULL) {
+                Add_In_Hash(num%Hash_Size,hashTable, tok);
+            }
+            //
+        } else if (strcmp(tok, "addrel") == 0) {
+            //1st Word read
+            tok = strtok(NULL, " \n");
+            int len = strlen(tok);
+            ent1 = (char*)malloc(sizeof(char)*(len+1));
+            strcpy(ent1, tok);
 
-    //External Loop: cicla fino alla fine dell'esecuzione del programma; ovvero fino a che viene letto END.
-    while (ext_loop == 1) {
-        comand = (char *)calloc(8, sizeof(char));
-        isRead = scanf("%s", comand);
-        //Confronto il comando con i casi noti.
-        if (strcmp(comand, "end") == 0) {/*
-            Debug_Delete_All_Relations(T_rel, T_rel->root);
-            Debug_Delete_All_Entities(T_ent, T_ent->root);
-            free(comand);
+            //2nd Word read
+            tok = strtok(NULL, " \n");
+            len = strlen(tok);
+            ent2 = (char*)malloc(sizeof(char)*(len+1));
+            strcpy(ent2, tok);
+
+            //3rd Word read
+            tok = strtok(NULL, "\n");
+            len = strlen(tok);
+            rel = (char*)malloc(sizeof(char)*(len+1));
+            strcpy(rel, tok);
+
+            ent1_key = hash((unsigned char*) ent1)%Hash_Size;
+            hash_element *ent1_elem = Find_In_Hash((long) ent1_key, hashTable, ent1);
+            if (ent1_elem != NULL) {
+                hash_element *ent2_elem;
+                if (strcmp(ent1, ent2) == 0) {
+                    ent2_elem = ent1_elem;
+                } else {
+                    ent2_key = hash((unsigned char *) ent2)%Hash_Size;
+                    ent2_elem = Find_In_Hash((long) ent2_key, hashTable, ent2);
+                }
+                if (ent2_elem != NULL) {
+                    //Verifico presenza o meno del nodo della relazione
+                    RB_Node *rel_node = Find_Rel(T_rel, rel, T_rel->root);
+                    if (rel_node == NULL) {
+                        //Se rel_node NON esiste, creo il node
+                        rel_node = Insert_Rel(T_rel, Create_Node_Rel(rel));
+                        RB_Tree_Ent_Rel *ent2_node = Insert_Ent_Rel(rel_node->T_ent, Create_Ent_Rel_Node(ent2_elem->ent_name));
+                        rel_node->num_of_entities++;
+                        Insert_Ent(ent2_node->T_givers, Create_Ent_Node(ent1_elem->ent_name));
+                        ent2_node->num_of_givers++;
+                        Check_Max(rel_node, ent2_node, ent2_elem);
+                    } else {
+                        //Verifico se ho già ent2 nella rel
+                        RB_Tree_Ent_Rel *ent2_node = Find_Ent_Rel(rel_node->T_ent, ent2, rel_node->T_ent->root);
+                        if (ent2_node == NULL) {
+                            //Se non ho ent2 nella relazione
+                            ent2_node = Insert_Ent_Rel(rel_node->T_ent, Create_Ent_Rel_Node(ent2_elem->ent_name));
+                            rel_node->num_of_entities++;
+                            Insert_Ent(ent2_node->T_givers, Create_Ent_Node(ent1_elem->ent_name));
+                            ent2_node->num_of_givers++;
+                            Check_Max(rel_node, ent2_node, ent2_elem);
+                        } else {
+                            //verifico se ho gia ent1 tra i givers di ent2
+                            if (Find_Ent(ent2_node->T_givers, ent1, ent2_node->T_givers->root) == NULL) {
+                                Insert_Ent(ent2_node->T_givers, Create_Ent_Node(ent1_elem->ent_name));
+                                ent2_node->num_of_givers++;
+                                Check_Max(rel_node, ent2_node, ent2_elem);
+                            }
+                        }
+                    }
+
+                    /*
+                    if (rel_node == NULL) {
+                        //Se rel_node NON esiste, creo il nodo
+                        rel_node = Insert_Rel(T_rel, Create_Node_Rel(rel));
+                        //Creo il rel_list ent2, creo il nodo ent_list ent1, associo ent_1 a ent2 e ent_2 a rel_node
+                        rel_list_element = Create_Rel_List_Element(ent2_elem->ent_name);
+                        Add_Ent_List_In_Rel_List(rel_list_element, Create_Ent_List_Element(ent1_elem->ent_name));
+                        Add_Rel_List_In_Ent_Node(rel_node, rel_list_element);
+                        Update_Max(rel_node, rel_list_element);
+                    } else {
+                        //Verifico se rel_node ha già la mia ent2
+                        rel_list *relList = Find_Rel_In_Ent(rel_node, ent2_elem->ent_name);
+                        if (relList == NULL) {
+                            //Se non ho l'elemento Rel_List
+                            relList = Create_Rel_List_Element(ent2_elem->ent_name);
+                            Add_Ent_List_In_Rel_List(relList, Create_Ent_List_Element(ent1_elem->ent_name));
+                            Add_Rel_List_In_Ent_Node(rel_node, relList);
+                            Update_Max(rel_node, relList);
+                        } else {
+                            //Verifico se ent1_node è già presente nella rel_list
+                            if (Find_Ent_in_Ent_List(relList, ent1_elem->ent_name) == 0) {
+                                Add_Ent_List_In_Rel_List(relList, Create_Ent_List_Element(ent1_elem->ent_name));
+                                Update_Max(rel_node, relList);
+                                //Update_Order_Add(relList, rel_node);
+                            }
+                        }
+                    }*/
+                }
+            }
+            free(ent1);
+            free(ent2);
+            free(rel);
+        } else if (strcmp(tok, "delrel") == 0) {
+            //1st Word read
+            tok = strtok(NULL, " \n");
+            int len = strlen(tok);
+            ent1 = (char*)malloc(sizeof(char)*(len+1));
+            strcpy(ent1, tok);
+
+            //2nd Word read
+            tok = strtok(NULL, " \n");
+            len = strlen(tok);
+            ent2 = (char*)malloc(sizeof(char)*(len+1));
+            strcpy(ent2, tok);
+
+            //3rd Word read
+            tok = strtok(NULL, " \n");
+            len = strlen(tok);
+            rel = (char*)malloc(sizeof(char)*(len+1));
+            strcpy(rel, tok);
+
+            hash_element *ent1_element = Find_In_Hash(((long)hash((unsigned char*) ent1)%Hash_Size), hashTable, ent1);
+            if (ent1_element != NULL) {
+                hash_element *ent2_element;
+                if (ent2 == ent1) {
+                    ent2_element = ent1_element;
+                } else {
+                    ent2_element = Find_In_Hash(((long)hash((unsigned char*) ent2)%Hash_Size), hashTable, ent2);
+                }
+                if (ent2_element != NULL) {
+                    RB_Node *rel_node = Find_Rel(T_rel, rel, T_rel->root);
+                    if (rel_node != NULL) {
+                        //controllo se esiste entità 2 in relazione con entità 1
+                        RB_Tree_Ent_Rel *ent2_in_rel = Find_Ent_Rel(rel_node->T_ent, ent2, rel_node->T_ent->root);
+                        if (ent2_in_rel != NULL) {
+                            //Qui controllo se ent2 ha tra i givers ent1
+                            RB_Tree_Ent *ent1_in_givers = Find_Ent(ent2_in_rel->T_givers, ent1, ent2_in_rel->T_givers->root);
+                            if (ent1_in_givers != NULL) {
+                                //Posso procedere ad eliminare!
+                                Delete_One_Ent_From_EntRel(ent1_in_givers, ent2_in_rel, rel_node, T_rel);
+                            }
+                        }
+                    }
+                }
+            }
+            free(ent1);
+            free(ent2);
+            free(rel);
+            //
+        } else if (strcmp(tok, "delent") == 0) {
+            tok = strtok(NULL, " \n");
+            hash_element *to_delete = Find_In_Hash(((long) hash((unsigned char*)tok)), hashTable, tok);
+            if (to_delete != NULL) {
+                //pulisci tutto
+            }
+            /*
+            tok = strtok(NULL, " \"\n");
+            rb_node *to_be_deleted = Find(T_ent, tok, T_ent->root);
+            //If ent1 is being monitored
+            if (to_be_deleted != NULL) {
+                Inorder_Delete_Ent_Elements (T_ent, T_ent->root, to_be_deleted->key, T_rel);
+                //Delete_Rel_Node(T_rel, T_rel->root);   Faccio dopo
+                if (to_be_deleted->relations != NULL) {
+                    Delete_All_Of_My_Entity(to_be_deleted, T_rel);
+                }
+                //Nuova Aggiunta
+                Clear_No_Relations_Node(T_rel, T_rel->root);
+                //
+                Delete(T_ent, to_be_deleted);
+                free (to_be_deleted->key);
+                free(to_be_deleted);
+            }*/
+        }
+        else if (strcmp(tok, "end") == 0) {
+            //pulisco in ordine, Tmax, Tgivers e Tent
+            debug_delete_max_check(T_rel, T_rel->root);
+            //Pulisco Trel
+            debug_delete_T_Rel(T_rel);
             free(T_rel->nil);
             free(T_rel);
-            free(T_ent->nil);
-            free(T_ent);*/
+            free(line);
+            debug_free_hashmap(hashTable);
             return 0;
-        }
-            //Se ADDENT o DELENT, devo leggere l'entità.
-        else if (strcmp (comand, "addent") == 0 || (strcmp (comand, "delent") == 0)) {
-            isRead = scanf(" \"%s", ent1);
-            parseWord(ent1);
-            if (comand[0] == 'a') {
-                if (isRead) {
-                    Insert(T_ent, Create_Node(ent1));
-                }
-            } else {
-                rb_node *to_be_deleted = Find(T_ent, ent1, T_ent->root);
-                //If ent1 is being monitored
-                if (to_be_deleted != NULL) {
-                    Inorder_Delete_Ent_Elements (T_ent, T_ent->root, to_be_deleted->key, T_rel);
-                    Delete_Rel_Node(T_rel, T_rel->root);
-                    if (to_be_deleted->relations != NULL) {
-                        rel_list *current = to_be_deleted->relations; //Head
-                        rel_list *next;
-                        while (current != NULL) {
-                            next = current->next;
-                            if (current->ent_list != NULL) {
-                                ent_list *current_ent = current->ent_list; //Head
-                                ent_list *next_ent;
-                                while (current_ent != NULL) {
-                                    next_ent = current_ent->next;
-                                    free(current_ent);
-                                    current_ent = next_ent;
-                                }
-                            }
-                            free(current->rel_name);
-                            free(current);
-                            current = next;
-                        }
-                    }
-                    Delete(T_ent, to_be_deleted);
-                    free (to_be_deleted->key);
-                    free(to_be_deleted);
-                }
-            }
-        }else if (strcmp (comand, "addrel") == 0 || (strcmp (comand, "delrel") == 0)) {
-            isRead = scanf(" \"%s \"%s \"%s", ent1, ent2, rel);
-            parseWord(ent1);
-            parseWord(ent2);
-            parseWord(rel);
-            if (comand[0] == 'a') {
-                if (isRead) {
-                    //Se esiste l'entità1
-                    rb_node *ent1_node = Find(T_ent, ent1, T_ent->root);
-                    if (ent1_node != NULL) {
-                        rb_node *receiver = Find(T_ent, ent2, T_ent->root);
-                        if (receiver != NULL) {
-                            //Se non esiste la relazione, la creo
-                            rb_node_rel *rel_node = Find_Rel(T_rel, rel, T_rel->root);
-                            //1 se creo il nodo, 0 altrimenti
-                            int created = 0;
-                            if ( rel_node == NULL) {
-                                created = 1;
-                                Insert_Rel(T_rel, Create_Node_Rel(rel));
-                            }
-                            //Guardo se il ricevente subisce già relazioni di tipo rel. NULL se non ne ha
-                            rel_list *temp_rel_list = Find_Rel_In_Ent(receiver, rel);
-                            if (temp_rel_list == NULL) {
-                                rel_list *new_rel_list_element = Create_Rel_List_Element(rel);
-                                Add_Rel_List_In_Ent_Node(receiver, new_rel_list_element);
-                                //Se created == 0, devo aggiungere 1 al numero di entità che usano questa relazione
-                                if (!created) {
-                                    rel_node->num_of_receivers++;
-                                }
-                                //Aggiungo ent1
-                                ent_list *new_giver = Create_Ent_List_Element(ent1_node);
-                                Add_Ent_List_In_Rel_List(new_rel_list_element, new_giver);
-                                new_rel_list_element->number_of_entities++;
-                            } else {
-                                //Se è già presente la relazione, verifico se ho già l'ent1 (1 già presente, 0 altrimenti)
-                                if (Find_Ent_in_Ent_List(temp_rel_list, ent1) == 0) {
-                                    ent_list *new_giver = Create_Ent_List_Element(ent1_node);
-                                    Add_Ent_List_In_Rel_List(temp_rel_list, new_giver);
-                                    temp_rel_list->number_of_entities++;
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                rb_node *ent1_node = Find(T_ent, ent1, T_ent->root);
-                if (ent1_node != NULL) {
-                    rb_node *ent2_node = Find(T_ent, ent2, T_ent->root);
-                        if (ent2_node != NULL) {
-                            rb_node_rel *rel_node = Find_Rel(T_rel, rel, T_rel->root);
-                            if (rel_node != NULL) {
-                                Delete_Ent_List_In_Specific_Rel(ent2_node, rel, ent1, rel_node, T_rel);
-                            }
-                        }
-                }
-            }
-        } else if (strcmp(comand, "report") == 0) {
-            if (T_rel->root == T_rel->nil) {
-                printf("none\n");
-            } else {
-                /*
-                 * TODO -> Scorro albero relazioni. E creo una ministruttura tipo albero con # e puntatore a
-                 * TODO    elemento, che sarà del tipo char *, e next
-                 * TODO -> Per ogni elemento , se ha la relazione d'interesse, una variabile
-                 * TODO    inizialmente posta = a rel.# diminuisce di uno, se l'elemento ha #diEnt < di quello della relazione
-                 * TODO    non faccio niente, se ha = lo aggiungo in coda, se ha > pulisco la lista e ne creo una nuova.
-                 * TODO -> Ripeto il tutto per tutte le relazioni presenti.
-                 * TODO -> Uso fputs per la stampa dei caratteri e printf per i numeri
-                 */
-                Inorder_Report_Tree(T_rel, T_rel->root, T_ent);
-                printf("\n");
-            }
-
-        } else if(strcmp(comand, "debug") == 0) {
+        } else if(strcmp(tok, "debug") == 0) {/*
             printf("\nentities:\n");
             Inorder( T_ent -> root, T_ent);
             printf("\nrelationships\n");
             Inorder_Rel(T_rel -> root, T_rel);
+            printf("\n");*/
+            debug_print_all(T_rel, T_rel->root);
             printf("\n");
+            printf("\n");
+
         }
-        free(comand);
+        tok = strtok(NULL, " \n");
+        free(tok);
     }
+
+
 }

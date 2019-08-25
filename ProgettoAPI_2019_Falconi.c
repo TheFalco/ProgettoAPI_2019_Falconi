@@ -45,6 +45,10 @@ typedef struct hash_element_s {
     struct hash_element_s *next;
 }hash_element;
 
+int modify = 0;
+RB_Tree_Ent_Head *to_delete_ent_rel = NULL;
+RB_Tree_Ent_Head *to_delete_rel = NULL;
+
 //Ent Tree Functions
 void Left_Rotate_Ent (RB_Tree_Ent_Head * T, RB_Tree_Ent * x){
     RB_Tree_Ent * y = x -> right;
@@ -203,7 +207,7 @@ void Delete_Fixup_Ent(RB_Tree_Ent_Head *T, RB_Tree_Ent *x) {
                     w->left->color = BLACK;
                     w->color = RED;
                     Right_Rotate_Ent(T, w);
-                    w->color = x->parent->color;
+                    w = x->parent->right;
                 }
                 w->color = x->parent->color;
                 x->parent->color = BLACK;
@@ -211,8 +215,9 @@ void Delete_Fixup_Ent(RB_Tree_Ent_Head *T, RB_Tree_Ent *x) {
                 Left_Rotate_Ent(T, x->parent);
                 x = T->root;
             }
-        } else {w = x->parent->left;
-            if (x->color == RED) {
+        } else {
+            w = x->parent->left;
+            if (w->color == RED) {
                 w->color = BLACK;
                 x->parent->color = RED;
                 Right_Rotate_Ent(T, x->parent);
@@ -272,7 +277,8 @@ void Delete_Ent(RB_Tree_Ent_Head *T, RB_Tree_Ent *z) {
 
 //Ent Rel Tree Functions
 void Left_Rotate_Ent_Rel (RB_Tree_Ent_Rel_Head * T, RB_Tree_Ent_Rel * x){
-    RB_Tree_Ent_Rel * y = x -> right;
+    RB_Tree_Ent_Rel * y;
+    y = x -> right;
     x -> right = y -> left;
     if (y -> left != T -> nil) {
         y -> left -> parent = x;
@@ -315,8 +321,8 @@ RB_Tree_Ent_Rel * Minimum_Ent_Rel (RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *n) 
 }
 
 void Insert_Fixup_Ent_Rel(RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *z) {
+    RB_Tree_Ent_Rel * y;
     while (z->parent->color == RED) {
-        RB_Tree_Ent_Rel * y;
         if (z->parent == z->parent->parent->left) {
             y = z->parent->parent->right;
             if (y->color == RED) {
@@ -429,7 +435,7 @@ void Delete_Fixup_Ent_Rel(RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *x) {
                     w->left->color = BLACK;
                     w->color = RED;
                     Right_Rotate_Ent_Rel(T, w);
-                    w->color = x->parent->color;
+                    w = x->parent->right;
                 }
                 w->color = x->parent->color;
                 x->parent->color = BLACK;
@@ -437,8 +443,9 @@ void Delete_Fixup_Ent_Rel(RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *x) {
                 Left_Rotate_Ent_Rel(T, x->parent);
                 x = T->root;
             }
-        } else {w = x->parent->left;
-            if (x->color == RED) {
+        } else {
+            w = x->parent->left;
+            if (w->color == RED) {
                 w->color = BLACK;
                 x->parent->color = RED;
                 Right_Rotate_Ent_Rel(T, x->parent);
@@ -655,7 +662,7 @@ void Delete_Fixup_Rel(RB_Tree *T, RB_Node *x) {
                     w->left->color = BLACK;
                     w->color = RED;
                     Right_Rotate_Rel(T, w);
-                    w->color = x->parent->color;
+                    w = x->parent->right;
                 }
                 w->color = x->parent->color;
                 x->parent->color = BLACK;
@@ -663,8 +670,9 @@ void Delete_Fixup_Rel(RB_Tree *T, RB_Node *x) {
                 Left_Rotate_Rel(T, x->parent);
                 x = T->root;
             }
-        } else {w = x->parent->left;
-            if (x->color == RED) {
+        } else {
+            w = x->parent->left;
+            if (w->color == RED) {
                 w->color = BLACK;
                 x->parent->color = RED;
                 Right_Rotate_Rel(T, x->parent);
@@ -835,6 +843,10 @@ void Add_In_Hash (long key, hash_element *HashTable[], char *ent_name) {
     }
     name [len] = '\0';
     if (HashTable[key] == NULL || HashTable[key]->ent_name == NULL) {
+        /*if (HashTable[key] == NULL) {
+            HashTable[key] = malloc(sizeof(hash_element));
+        }*/
+        HashTable[key] = malloc(sizeof(hash_element));
         HashTable[key]->ent_name = name;
         HashTable[key]->next = NULL;
         return;
@@ -843,6 +855,27 @@ void Add_In_Hash (long key, hash_element *HashTable[], char *ent_name) {
     new->ent_name = name;
     new->next = HashTable[key]->next;
     HashTable[key]->next = new;
+}
+
+void Delete_From_Hash(hash_element *to_delete, long key, hash_element *HashTable[]) {
+    hash_element *temp = HashTable[key];
+    if (strcmp(temp->ent_name, to_delete->ent_name) == 0) {
+        HashTable[key] = temp->next;
+        free(temp->ent_name);
+        free(temp);
+        return;
+    }
+    hash_element *prev;
+    while (temp != NULL && strcmp(temp->ent_name, to_delete->ent_name) != 0) {
+        prev = temp;
+        temp = temp->next;
+    }
+    if (temp == NULL) {
+        return;
+    }
+    prev->next = temp->next;
+    free(temp->ent_name);
+    free(temp);
 }
 
 unsigned long hash(unsigned char *str) {
@@ -854,17 +887,6 @@ unsigned long hash(unsigned char *str) {
 
     return hash;
 }
-/*
-void Clear_Max_Entities(RB_Tree_Ent_Head *rel_node, RB_Tree_Ent *root) {
-    if (root == rel_node->nil) {
-        return;
-    }
-    Clear_Max_Entities(rel_node, root->left);
-    RB_Tree_Ent *right = root->right;
-    Delete_Ent(rel_node, root);
-    free(root);
-    Clear_Max_Entities(rel_node, right);
-}*/
 
 void Clear_Max (RB_Tree_Ent_Head *rel_node) {
     RB_Tree_Ent *temp;
@@ -875,16 +897,44 @@ void Clear_Max (RB_Tree_Ent_Head *rel_node) {
     }
 }
 
+void Clear_Rel (RB_Tree *T, RB_Tree_Ent *root) {
+    if (root == to_delete_rel->nil) {
+        return;
+    }
+    Clear_Rel(T, root->left);
+    //
+    RB_Node *to_delete = Find_Rel(T, root->ent_name, T->root);
+    if (to_delete != NULL) {
+        Delete_Rel(T, to_delete);
+        free(to_delete->rel_name);
+        free(to_delete);
+    }
+    //
+    Clear_Rel(T, root->right);
+}
+
+void Clear_Ent_Rel (RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent *root) {
+    if (root == to_delete_ent_rel->nil) {
+        return;
+    }
+    Clear_Ent_Rel(T, root->left);
+    //
+    RB_Tree_Ent_Rel *to_delete = Find_Ent_Rel(T, root->ent_name, T->root);
+    if (to_delete != NULL) {
+        Delete_Ent_Rel(T, to_delete);
+        free(to_delete);
+    }
+    //
+    Clear_Ent_Rel(T, root->right);
+}
+
 void Check_Max(RB_Node *rel_node, RB_Tree_Ent_Rel *ent_node, hash_element *ent2_element) {
-    //se max_size è il massimo, non faccio niente
+    //se max_size a'¨ il massimo, non faccio niente
     if (rel_node->max_size > ent_node->num_of_givers) {
         return;
     }
     if (rel_node->max_size < ent_node->num_of_givers) {
-        Clear_Max(rel_node->T_max_ent);/*
-        free(rel_node->T_max_ent->nil);
-        free(rel_node->T_max_ent);
-        rel_node->T_max_ent = Create_Ent_Head();*/
+        Clear_Max(rel_node->T_max_ent);
         rel_node->num_of_max_entities = 0;
         Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(ent2_element->ent_name));
         rel_node->max_size = ent_node->num_of_givers;
@@ -896,25 +946,6 @@ void Check_Max(RB_Node *rel_node, RB_Tree_Ent_Rel *ent_node, hash_element *ent2_
         Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(ent2_element->ent_name));
         rel_node->num_of_max_entities++;
     }
-
-
-
-
-    /*if (rel_node->max_size > ent_node->num_of_givers) {
-        return;
-    }
-    if (rel_node->max_size < ent_node->num_of_givers) {
-        rel_node->max_size = ent_node->num_of_givers;
-        Clear_Max_Entities(rel_node, rel_node->T_max_ent->root);
-        //Aggiungi lo fa la riga sotto
-        Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(ent2_element->ent_name));
-        return;
-    }
-    //hash_element *temp = Find_In_Hash((long) ent_node->hash_key, hash, ent_node->ent_name);
-    RB_Tree_Ent *temp = Find_Ent(rel_node->T_max_ent, ent2_element->ent_name, rel_node->T_max_ent->root);
-    if (temp != NULL) {
-        Insert_Ent(rel_node->T_max_ent, Create_Ent_Node(ent2_element->ent_name));
-    }*/
 }
 
 void Inorder_Max_Tree (RB_Tree_Ent_Head *T, RB_Tree_Ent *root) {
@@ -932,11 +963,13 @@ void Inorder_Report_Tree(RB_Tree *T, RB_Node *root) {
         return;
     }
     Inorder_Report_Tree(T, root->left);
-    fputs(root->rel_name, stdout);
-    fputc(' ', stdout);
-    Inorder_Max_Tree(root->T_max_ent, root->T_max_ent->root);
-    printf("%d", root->max_size);
-    fputs("; ", stdout);
+    if (root->max_size > 0 && root->num_of_max_entities > 0) {
+        fputs(root->rel_name, stdout);
+        fputc(' ', stdout);
+        Inorder_Max_Tree(root->T_max_ent, root->T_max_ent->root);
+        printf("%d", root->max_size);
+        fputs("; ", stdout);
+    }
     Inorder_Report_Tree(T, root->right);
 }
 
@@ -963,42 +996,24 @@ void Search_For_Max_Entities (RB_Node *rel_node, RB_Tree_Ent_Rel_Head *T_ent, RB
     Search_For_Max_Entities(rel_node, T_ent, root->right);
 }
 
-
-void Delete_One_Ent_From_Max (RB_Tree *T, RB_Node *root, char *name) {
-    //Se ho più di un entita, elimino semplicemnte la mia entita dai massimi
-    if (root->num_of_max_entities > 1) {
-        RB_Tree_Ent *temp = Find_Ent(root->T_max_ent, name, root->T_max_ent->root);
-        Delete_Ent(root->T_max_ent, temp);
-        free(temp);
-        root->num_of_max_entities--;
-        return;
-    }
-    //Se ho più di un entita, elimino l'entità e...
-    RB_Tree_Ent *temp = Find_Ent(root->T_max_ent, name, root->T_max_ent->root);
-    Delete_Ent(root->T_max_ent, temp);
-    free(temp);
-    root->num_of_max_entities--;
-    root->max_size = 0;
-    //E... ricerco il/i nuovo/i max
-    Search_For_Max_Entities(root, root->T_ent, root->T_ent->root);
-}
-
 void Delete_One_Ent_From_EntRel (RB_Tree_Ent *ent1_node, RB_Tree_Ent_Rel *ent2_node, RB_Node *rel_node, RB_Tree *T) {
+    int original_max_size = ent2_node->num_of_givers;
+    char *original_name_ent2 = ent2_node->ent_name;
+    //Cancello entità 1 dall'albero
     Delete_Ent(ent2_node->T_givers, ent1_node);
     free(ent1_node);
     ent2_node->num_of_givers--;
-    //Controllo se era tra i max
-    if (rel_node->max_size == (ent2_node->num_of_givers +1)) {
-        //TODO -> Elimino ent2_node dai max. Se i max ha 1 sola entità (ent2_node) devo ricercare il massimo
-        Delete_One_Ent_From_Max(T, rel_node, ent2_node->ent_name);
-    }
+    //Controllo se ent2 non ha più entità
     if (ent2_node->num_of_givers == 0) {
+        //Devo eliminare ent2_node
         Delete_Ent_Rel(rel_node->T_ent, ent2_node);
         free(ent2_node->T_givers->nil);
         free(ent2_node->T_givers);
         free(ent2_node);
         rel_node->num_of_entities--;
+        //Controllo se rel_node ha ancora entità
         if (rel_node->num_of_entities == 0) {
+            //Elimino rel_node, pulisco memoria e ritorno
             Clear_Max(rel_node->T_max_ent);
             Delete_Rel(T, rel_node);
             free(rel_node->T_max_ent->nil);
@@ -1006,145 +1021,157 @@ void Delete_One_Ent_From_EntRel (RB_Tree_Ent *ent1_node, RB_Tree_Ent_Rel *ent2_n
             free(rel_node->T_ent->nil);
             free(rel_node->T_ent);
             free(rel_node);
-        }
-    }
-}
-
-
-//Debug Functions
-void debug_print_all_3 (RB_Tree_Ent_Head *T, RB_Tree_Ent *root) {
-    if (root == T->nil) {
-        return;
-    }
-    debug_print_all_3(T, root->left);
-    //
-    printf("%s", root->ent_name);
-    debug_print_all_3(T, root->right);
-}
-
-void debug_print_all_2 (RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *root) {
-    if (root == T->nil) {
-        return;
-    }
-    debug_print_all_2(T, root->left);
-    //
-    printf("Entita %s, #givers %d\n", root->ent_name, root->num_of_givers);
-    debug_print_all_3(root->T_givers, root->T_givers->root);
-    printf("\n");
-    debug_print_all_2(T, root->right);
-}
-
-void debug_print_all_max(RB_Tree_Ent_Head *T, RB_Tree_Ent *root) {
-    if (root == T->nil) {
-        return;
-    }
-    debug_print_all_max(T, root->left);
-    //
-    printf("%s, ", root->ent_name);
-    debug_print_all_max(T, root->right);
-}
-
-void debug_print_all(RB_Tree *T, RB_Node *root){
-    if (root == T->nil) {
-        return;
-    }
-    debug_print_all(T, root->left);
-    //
-    printf("Relazione: %s MAX: %d, num_of_max_ent %d\nMax_Ents: ", root->rel_name, root->max_size, root->num_of_max_entities);
-    debug_print_all_max(root->T_max_ent, root->T_max_ent->root);
-    printf("\n");
-    debug_print_all_2(root->T_ent, root->T_ent->root);
-    debug_print_all(T, root->right);
-}
-
-void debug_delete_max_entities(RB_Tree_Ent_Head *rel_node, RB_Tree_Ent *root) {
-    RB_Tree_Ent *temp;
-    while (rel_node->root != rel_node->nil) {
-        temp = rel_node->root;
-        Delete_Ent(rel_node, rel_node->root);
-        free(temp);
-    }
-}
-
-void debug_inorder_ent (RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *root) {
-    if (root == T->nil) {
-        return;
-    }
-    debug_inorder_ent(T, root->left);
-    debug_delete_max_entities(root->T_givers, root->T_givers->root);
-    debug_inorder_ent(T, root->right);
-}
-
-void debug_delete_t_divers_check(RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *root) {
-    if (root == T->nil) {
-        return;
-    }
-    debug_delete_t_divers_check(T, root->left);
-    //
-    debug_delete_max_entities(root->T_givers, root->T_givers->root);
-    free(root->T_givers->nil);
-    free(root->T_givers);
-    //
-    debug_delete_t_divers_check(T, root->right);
-}
-
-void debug_delete_T_Ent (RB_Tree_Ent_Rel_Head *T) {
-    RB_Tree_Ent_Rel *temp;
-    while (T->root != T->nil) {
-        temp = T->root;
-        Delete_Ent_Rel(T, T->root);
-        free(temp);
-    }
-}
-
-void debug_delete_max_check (RB_Tree *T, RB_Node *root) {
-    if (root == T->nil) {
-        return;
-    }
-    debug_delete_max_check(T, root->left);
-    //
-    //Cancello le max ent e la struttura che ne fa riferimento
-    debug_delete_max_entities(root->T_max_ent, root->T_max_ent->root);
-    free(root->T_max_ent->nil);
-    free(root->T_max_ent);
-    //Chiamo la funz che cancellerà i T_Givers di ogni nodo delle entita
-    debug_delete_t_divers_check(root->T_ent, root->T_ent->root);
-    //Cancello le entità e ogni riferimento alla struttura
-    debug_delete_T_Ent(root->T_ent);
-    free(root->T_ent->nil);
-    free(root->T_ent);
-    //
-    debug_delete_max_check(T, root->right);
-}
-
-void debug_delete_T_Rel (RB_Tree *T) {
-    RB_Node *temp;
-    while (T->root != T->nil) {
-        temp = T->root;
-        Delete_Rel(T, T->root);
-        free(temp->rel_name);
-        free(temp);
-    }
-}
-
-void debug_free_hashmap (hash_element *ht[]) {
-    int i;
-    for ( i = 0; i < Hash_Size; i++) {
-        if (ht[i] != NULL) {
-            hash_element *temp = ht[i];
-            while (temp != NULL) {
-                ht[i] = ht[i]->next;
-                free(temp->ent_name);
-                free(temp);
-                temp = ht[i];
+            return;
+        } else {
+            //Controllo se ent2 era tra i massimi
+            if (rel_node->max_size == original_max_size) {
+                //Se era tra i massimi, controllo se era unico, o con altre entità
+                if (rel_node->num_of_max_entities > 1) {
+                    //Se non era da sola
+                    RB_Tree_Ent *to_delete = Find_Ent(rel_node->T_max_ent, original_name_ent2, rel_node->T_max_ent->root);
+                    Delete_Ent(rel_node->T_max_ent, to_delete);
+                    rel_node->num_of_max_entities--;
+                    free(to_delete);
+                    return;
+                } else {
+                    RB_Tree_Ent *to_delete = rel_node->T_max_ent->root;
+                    Delete_Ent(rel_node->T_max_ent, to_delete);
+                    free(to_delete);
+                    rel_node->num_of_max_entities = 0;
+                    rel_node->max_size = 0;
+                    Search_For_Max_Entities(rel_node, rel_node->T_ent, rel_node->T_ent->root);
+                    return;
+                }
+            } else {
+                //Se non era tra i massimi, apposto
+                return;
             }
         }
+    } else {
+        //Ent2 non si svuota, controllo se era tra i max
+        if (rel_node->max_size == original_max_size) {
+            //Controllo se era da sola
+            if (rel_node->num_of_max_entities > 1) {
+                //Se non era da sola
+                RB_Tree_Ent *to_delete = Find_Ent(rel_node->T_max_ent, original_name_ent2, rel_node->T_max_ent->root);
+                Delete_Ent(rel_node->T_max_ent, to_delete);
+                rel_node->num_of_max_entities--;
+                free(to_delete);
+                return;
+            } else {
+                RB_Tree_Ent *to_delete = rel_node->T_max_ent->root;
+                Delete_Ent(rel_node->T_max_ent, to_delete);
+                free(to_delete);
+                rel_node->num_of_max_entities = 0;
+                rel_node->max_size = 0;
+                Search_For_Max_Entities(rel_node, rel_node->T_ent, rel_node->T_ent->root);
+                return;
+            }
+        } else {
+            return;
+        }
     }
+}
+
+void Search_For_To_Be_Delete_In_Ent (RB_Tree_Ent_Head *T, RB_Tree_Ent *root, char *to_delete, RB_Tree_Ent_Rel *ent2) {
+    RB_Tree_Ent *temp = root;
+    int cmp;
+    while (temp != T->nil) {
+        cmp = strcmp(temp->ent_name, to_delete);
+        if (cmp < 0) {
+            temp = temp->right;
+        }else if (cmp > 0) {
+            temp = temp->left;
+        } else {
+            //Ho trovato l'ent da togliere
+            Delete_Ent(T, temp);
+            ent2->num_of_givers--;
+            free(temp);
+            return;
+        }
+    }
+}
+
+void  Search_For_To_Be_Delete_In_Ent_Rel(RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent_Rel *root, char *to_delete, RB_Node *rel_node) {
+    if (root == T->nil) {
+        return;
+    }
+    Search_For_To_Be_Delete_In_Ent_Rel(T, root->left, to_delete, rel_node);
+    //
+    //Se root è l'entità che vogio eliminare
+    if (strcmp(root->ent_name, to_delete) == 0) {
+        Clear_Max(root->T_givers);      //Clear T_givers
+        free(root->T_givers->nil);
+        free(root->T_givers);
+        //Aggiungo entità tra quelle da cancellare
+        Insert_Ent(to_delete_ent_rel, Create_Ent_Node(to_delete));
+        rel_node->num_of_entities--;
+        if (root->num_of_givers == rel_node->max_size) {
+            modify = 1;
+        }
+    } else {
+        //Se non è l'entità da cancellare, cerco tra i T_givers se la trovo.
+        int original_num_of_givers = root->num_of_givers;
+        Search_For_To_Be_Delete_In_Ent(root->T_givers, root->T_givers->root, to_delete, root);
+        //Se era massimo
+        if (original_num_of_givers != root->num_of_givers) {
+            if (rel_node->max_size == original_num_of_givers) {
+                modify = 1;
+            }
+        }
+        //Se ent2 si è svuotata
+        if (root->num_of_givers == 0) {
+            free(root->T_givers->nil);
+            free(root->T_givers);
+            //Aggiungo entità tra quelle da cancellare
+            Insert_Ent(to_delete_ent_rel, Create_Ent_Node(root->ent_name));
+            rel_node->num_of_entities--;
+        }
+    }
+    //
+    Search_For_To_Be_Delete_In_Ent_Rel(T, root->right, to_delete, rel_node);
+}
+
+void Search_For_To_Be_Delete_In_Rel (RB_Tree *T, RB_Node *root, char *to_delete) {
+    if (root == T->nil) {
+        return;
+    }
+    Search_For_To_Be_Delete_In_Rel(T, root->left, to_delete);
+    //
+    modify = 0;
+    //Cerco tra le ent_rel
+    Search_For_To_Be_Delete_In_Ent_Rel(root->T_ent, root->T_ent->root, to_delete, root);
+    //Elimino definitivamente le ent2 da eliminare
+    Clear_Ent_Rel(root->T_ent, to_delete_ent_rel->root);
+    Clear_Max(to_delete_ent_rel);
+    //Controllo se rel_node si è svuotata
+    if (root->num_of_entities == 0) {
+        //Pulisco
+        Clear_Max(root->T_max_ent);
+        free(root->T_max_ent->nil);
+        free(root->T_max_ent);
+        free(root->T_ent->nil);
+        //Aggiungo nodo tar quelli da cancellare
+        Insert_Ent(to_delete_rel, Create_Ent_Node(root->rel_name));
+    } else {
+        //Se devo ricalcolare il max
+        if (modify) {
+            Clear_Max(root->T_max_ent);
+            root->num_of_max_entities = 0;
+            root->max_size = 0;
+            Search_For_Max_Entities(root, root->T_ent, root->T_ent->root);
+        }
+    }
+    //
+    Search_For_To_Be_Delete_In_Rel(T, root->right, to_delete);
 }
 
 int main() {
+    to_delete_ent_rel = Create_Ent_Head();
+    to_delete_rel = Create_Ent_Head();
     hash_element *hashTable[Hash_Size];
     int i;
+    // Non Inizializzo HashMap
     for (i = 0; i < Hash_Size; i++) {
         hashTable[i] = malloc(sizeof(hash_element));
         if (hashTable[i] != NULL) {
@@ -1158,21 +1185,16 @@ int main() {
     //char line[100];
     char *line;
     //
-    size_t bufsize = 100;
+    size_t bufsize = 200;
     size_t  chars;
     line = (char *)malloc(sizeof(char) *bufsize);
     //
-    int ent1_key;
-    int ent2_key;
     char *ent1;
     char *ent2;
     char *rel;
-    //DA TOGLIEREEEE
-    freopen("input.txt", "r", stdin);
-    //
+
     while (1) {
-        //chars = getline(&line, &bufsize, stdin);
-        fgets(line, 100, stdin);
+        chars = getline(&line, &bufsize, stdin);
         char *tok = strtok(line, " \n");
         if (strcmp(tok, "report") == 0) {
             if (T_rel->root == T_rel->nil) {
@@ -1208,15 +1230,15 @@ int main() {
             rel = (char*)malloc(sizeof(char)*(len+1));
             strcpy(rel, tok);
 
-            ent1_key = hash((unsigned char*) ent1)%Hash_Size;
-            hash_element *ent1_elem = Find_In_Hash((long) ent1_key, hashTable, ent1);
+            num = hash((unsigned char*) ent1)%Hash_Size;
+            hash_element *ent1_elem = Find_In_Hash((long) num, hashTable, ent1);
             if (ent1_elem != NULL) {
                 hash_element *ent2_elem;
                 if (strcmp(ent1, ent2) == 0) {
                     ent2_elem = ent1_elem;
                 } else {
-                    ent2_key = hash((unsigned char *) ent2)%Hash_Size;
-                    ent2_elem = Find_In_Hash((long) ent2_key, hashTable, ent2);
+                    num = hash((unsigned char *) ent2)%Hash_Size;
+                    ent2_elem = Find_In_Hash((long) num, hashTable, ent2);
                 }
                 if (ent2_elem != NULL) {
                     //Verifico presenza o meno del nodo della relazione
@@ -1230,7 +1252,7 @@ int main() {
                         ent2_node->num_of_givers++;
                         Check_Max(rel_node, ent2_node, ent2_elem);
                     } else {
-                        //Verifico se ho già ent2 nella rel
+                        //Verifico se ho gia'  ent2 nella rel
                         RB_Tree_Ent_Rel *ent2_node = Find_Ent_Rel(rel_node->T_ent, ent2, rel_node->T_ent->root);
                         if (ent2_node == NULL) {
                             //Se non ho ent2 nella relazione
@@ -1248,34 +1270,6 @@ int main() {
                             }
                         }
                     }
-
-                    /*
-                    if (rel_node == NULL) {
-                        //Se rel_node NON esiste, creo il nodo
-                        rel_node = Insert_Rel(T_rel, Create_Node_Rel(rel));
-                        //Creo il rel_list ent2, creo il nodo ent_list ent1, associo ent_1 a ent2 e ent_2 a rel_node
-                        rel_list_element = Create_Rel_List_Element(ent2_elem->ent_name);
-                        Add_Ent_List_In_Rel_List(rel_list_element, Create_Ent_List_Element(ent1_elem->ent_name));
-                        Add_Rel_List_In_Ent_Node(rel_node, rel_list_element);
-                        Update_Max(rel_node, rel_list_element);
-                    } else {
-                        //Verifico se rel_node ha già la mia ent2
-                        rel_list *relList = Find_Rel_In_Ent(rel_node, ent2_elem->ent_name);
-                        if (relList == NULL) {
-                            //Se non ho l'elemento Rel_List
-                            relList = Create_Rel_List_Element(ent2_elem->ent_name);
-                            Add_Ent_List_In_Rel_List(relList, Create_Ent_List_Element(ent1_elem->ent_name));
-                            Add_Rel_List_In_Ent_Node(rel_node, relList);
-                            Update_Max(rel_node, relList);
-                        } else {
-                            //Verifico se ent1_node è già presente nella rel_list
-                            if (Find_Ent_in_Ent_List(relList, ent1_elem->ent_name) == 0) {
-                                Add_Ent_List_In_Rel_List(relList, Create_Ent_List_Element(ent1_elem->ent_name));
-                                Update_Max(rel_node, relList);
-                                //Update_Order_Add(relList, rel_node);
-                            }
-                        }
-                    }*/
                 }
             }
             free(ent1);
@@ -1300,18 +1294,20 @@ int main() {
             rel = (char*)malloc(sizeof(char)*(len+1));
             strcpy(rel, tok);
 
-            hash_element *ent1_element = Find_In_Hash(((long)hash((unsigned char*) ent1)%Hash_Size), hashTable, ent1);
+            num = hash((unsigned char* )ent1)%Hash_Size;
+            hash_element *ent1_element = Find_In_Hash(num, hashTable, ent1);
             if (ent1_element != NULL) {
                 hash_element *ent2_element;
                 if (ent2 == ent1) {
                     ent2_element = ent1_element;
                 } else {
-                    ent2_element = Find_In_Hash(((long)hash((unsigned char*) ent2)%Hash_Size), hashTable, ent2);
+                    num = hash ((unsigned char *)ent2)%Hash_Size;
+                    ent2_element = Find_In_Hash(num, hashTable, ent2);
                 }
                 if (ent2_element != NULL) {
                     RB_Node *rel_node = Find_Rel(T_rel, rel, T_rel->root);
                     if (rel_node != NULL) {
-                        //controllo se esiste entità 2 in relazione con entità 1
+                        //controllo se esiste entita'  2 in relazione con entita'  1
                         RB_Tree_Ent_Rel *ent2_in_rel = Find_Ent_Rel(rel_node->T_ent, ent2, rel_node->T_ent->root);
                         if (ent2_in_rel != NULL) {
                             //Qui controllo se ent2 ha tra i givers ent1
@@ -1327,55 +1323,22 @@ int main() {
             free(ent1);
             free(ent2);
             free(rel);
-            //
         } else if (strcmp(tok, "delent") == 0) {
             tok = strtok(NULL, " \n");
-            hash_element *to_delete = Find_In_Hash(((long) hash((unsigned char*)tok)), hashTable, tok);
+            num = hash((unsigned char *)tok)%Hash_Size;
+            hash_element *to_delete = Find_In_Hash(num, hashTable, tok);
             if (to_delete != NULL) {
                 //pulisci tutto
+                Search_For_To_Be_Delete_In_Rel(T_rel, T_rel->root, to_delete->ent_name);
+                Clear_Rel(T_rel, to_delete_rel->root);
+                Clear_Max(to_delete_rel);
+                //Cancella entita' 
+                Delete_From_Hash(to_delete, num, hashTable);
             }
-            /*
-            tok = strtok(NULL, " \"\n");
-            rb_node *to_be_deleted = Find(T_ent, tok, T_ent->root);
-            //If ent1 is being monitored
-            if (to_be_deleted != NULL) {
-                Inorder_Delete_Ent_Elements (T_ent, T_ent->root, to_be_deleted->key, T_rel);
-                //Delete_Rel_Node(T_rel, T_rel->root);   Faccio dopo
-                if (to_be_deleted->relations != NULL) {
-                    Delete_All_Of_My_Entity(to_be_deleted, T_rel);
-                }
-                //Nuova Aggiunta
-                Clear_No_Relations_Node(T_rel, T_rel->root);
-                //
-                Delete(T_ent, to_be_deleted);
-                free (to_be_deleted->key);
-                free(to_be_deleted);
-            }*/
-        }
-        else if (strcmp(tok, "end") == 0) {
-            //pulisco in ordine, Tmax, Tgivers e Tent
-            debug_delete_max_check(T_rel, T_rel->root);
-            //Pulisco Trel
-            debug_delete_T_Rel(T_rel);
-            free(T_rel->nil);
-            free(T_rel);
-            free(line);
-            debug_free_hashmap(hashTable);
+        } else if (strcmp(tok, "end") == 0) {
             return 0;
-        } else if(strcmp(tok, "debug") == 0) {/*
-            printf("\nentities:\n");
-            Inorder( T_ent -> root, T_ent);
-            printf("\nrelationships\n");
-            Inorder_Rel(T_rel -> root, T_rel);
-            printf("\n");*/
-            debug_print_all(T_rel, T_rel->root);
-            printf("\n");
-            printf("\n");
-
         }
         tok = strtok(NULL, " \n");
         free(tok);
     }
-
-
 }

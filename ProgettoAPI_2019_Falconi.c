@@ -1,3 +1,11 @@
+/*
+ *                       Prova Finale                       *
+ *           Algoritmi e Principi dell'Informatica          *
+ *                 Anno Accademico 2018-2019                *
+ *                 Studente: Matteo Falconi                 *
+ *                     Matricola: 866146                    *
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -45,11 +53,12 @@ typedef struct hash_element_s {
     struct hash_element_s *next;
 }hash_element;
 
+//Global Variables
 int modify = 0;
 RB_Tree_Ent_Head *to_delete_ent_rel = NULL;
 RB_Tree_Ent_Head *to_delete_rel = NULL;
 
-//Ent Tree Functions
+//Ent_Tree Functions
 void Left_Rotate_Ent (RB_Tree_Ent_Head * T, RB_Tree_Ent * x){
     RB_Tree_Ent * y = x -> right;
     x -> right = y -> left;
@@ -275,7 +284,7 @@ void Delete_Ent(RB_Tree_Ent_Head *T, RB_Tree_Ent *z) {
     }
 }
 
-//Ent Rel Tree Functions
+//Ent_Rel Tree Functions
 void Left_Rotate_Ent_Rel (RB_Tree_Ent_Rel_Head * T, RB_Tree_Ent_Rel * x){
     RB_Tree_Ent_Rel * y;
     y = x -> right;
@@ -843,9 +852,6 @@ void Add_In_Hash (long key, hash_element *HashTable[], char *ent_name) {
     }
     name [len] = '\0';
     if (HashTable[key] == NULL || HashTable[key]->ent_name == NULL) {
-        /*if (HashTable[key] == NULL) {
-            HashTable[key] = malloc(sizeof(hash_element));
-        }*/
         HashTable[key] = malloc(sizeof(hash_element));
         HashTable[key]->ent_name = name;
         HashTable[key]->next = NULL;
@@ -929,7 +935,7 @@ void Clear_Ent_Rel (RB_Tree_Ent_Rel_Head *T, RB_Tree_Ent *root) {
 }
 
 void Check_Max(RB_Node *rel_node, RB_Tree_Ent_Rel *ent_node, hash_element *ent2_element) {
-    //se max_size a'¨ il massimo, non faccio niente
+    //se max_size e' il massimo, non faccio niente
     if (rel_node->max_size > ent_node->num_of_givers) {
         return;
     }
@@ -1171,7 +1177,7 @@ int main() {
     to_delete_rel = Create_Ent_Head();
     hash_element *hashTable[Hash_Size];
     int i;
-    // Non Inizializzo HashMap
+    //Inizializzo HashMap
     for (i = 0; i < Hash_Size; i++) {
         hashTable[i] = malloc(sizeof(hash_element));
         if (hashTable[i] != NULL) {
@@ -1182,10 +1188,9 @@ int main() {
     unsigned long num;
     RB_Tree *T_rel;
     T_rel = Create_Tree_Rel();
-    //char line[100];
     char *line;
     //
-    size_t bufsize = 200;
+    size_t bufsize = 100;
     size_t  chars;
     line = (char *)malloc(sizeof(char) *bufsize);
     //

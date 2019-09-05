@@ -6,7 +6,7 @@ A C program that monitor relations between elements.
 ## Input Format
 The program expects its input from stdio with the following format.
 
-_**NOTE**: Entities' and Relations' name cannot have "space" character in them_.
+_**NOTE**: Entities' and Relations' name cannot have whitespace characters in them_.
 #### Addition of an Entity
 To add an Entity that will be monitored, it is needed to write it between quotation marks and after ```addrel``` keyword.
 #### Addition of a Relation

@@ -55,6 +55,4 @@ The ```end``` keyword will terminate the simulation.
  "is_loved_by" "Leila_Organa" 1; "is_brother_of" "Luke_Skywalker" 1;
  none
  ```
- 
- ## Compiling
- Run  ```make```.
+
